@@ -26,3 +26,6 @@
 ## 2026-10-25 - [Palette: Add focus-visible style to "Open file" button in FilesPanel]
 **Learning:** Some custom UI buttons (like the FilesPanel's Open button) use `outline-none` but lack an explicit `focus-visible` fallback, making keyboard focus invisible. A solid focus ring can also provide better contrast than a translucent ring.
 **Action:** Add an explicit `focus-visible` ring to custom buttons that suppress their outline, and check the component's mounted context before changing shared UI.
+## 2026-11-03 - [Palette: Add missing focus-visible styles to diff panel and preview buttons]
+**Learning:** Interactive controls like `<button>` and `<Menu.Trigger>` in `PreviewHost.tsx` and `DiffPanel.tsx` suppress standard focus styling by using `outline-none` but lacked explicit `focus-visible` fallback rings, creating invisible keyboard focus states.
+**Action:** When adding or updating custom buttons and menu triggers that suppress standard outlines, always include `focus-visible:ring-2 focus-visible:ring-focus-ring` (with appropriate contrast, avoiding opacity if contrast drops too low) to ensure keyboard navigation remains visibly distinct. Pre-existing test failures outside of scope should just be documented.
