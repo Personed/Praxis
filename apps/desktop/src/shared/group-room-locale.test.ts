@@ -71,4 +71,30 @@ describe("systemHourCycle", () => {
 
     expect(systemHourCycle()).toBeUndefined();
   });
+
+  it("returns the system hour cycle from Intl.DateTimeFormat resolvedOptions", () => {
+    vi.stubGlobal("Intl", {
+      ...OriginalIntl,
+      DateTimeFormat: class MockDateTimeFormat {
+        resolvedOptions() {
+          return { hourCycle: "h12" };
+        }
+      },
+    });
+
+    expect(systemHourCycle()).toBe("h12");
+  });
+
+  it("returns undefined when Intl throws an error", () => {
+    vi.stubGlobal("Intl", {
+      ...OriginalIntl,
+      DateTimeFormat: class MockDateTimeFormat {
+        resolvedOptions() {
+          throw new Error("Simulated error");
+        }
+      },
+    });
+
+    expect(systemHourCycle()).toBeUndefined();
+  });
 });
