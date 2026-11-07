@@ -1,10 +1,10 @@
-import { describe, expect, it, vi, afterEach } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   groupAgentWorkingLabel,
   groupRoomLabel,
   resolveGroupRoomLocale,
-  thinkingStateKeyFromLive,
   systemHourCycle,
+  thinkingStateKeyFromLive,
 } from "./group-room-locale";
 
 describe("group-room-locale", () => {
@@ -55,7 +55,7 @@ describe("systemHourCycle", () => {
 
   it("returns hour cycle when available", () => {
     const mockResolvedOptions = vi.fn().mockReturnValue({ hourCycle: "h23" });
-    const MockDateTimeFormat = vi.fn().mockImplementation(function() {
+    const MockDateTimeFormat = vi.fn().mockImplementation(function () {
       return { resolvedOptions: mockResolvedOptions };
     });
     vi.stubGlobal("Intl", { ...OriginalIntl, DateTimeFormat: MockDateTimeFormat });
@@ -64,7 +64,7 @@ describe("systemHourCycle", () => {
   });
 
   it("returns undefined when it throws", () => {
-    const MockDateTimeFormat = vi.fn().mockImplementation(function() {
+    const MockDateTimeFormat = vi.fn().mockImplementation(function () {
       throw new Error("Intl error");
     });
     vi.stubGlobal("Intl", { ...OriginalIntl, DateTimeFormat: MockDateTimeFormat });
