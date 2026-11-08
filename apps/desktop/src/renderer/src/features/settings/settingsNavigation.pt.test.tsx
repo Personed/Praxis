@@ -29,7 +29,7 @@ describe("Settings navigation in Portuguese (<html lang=pt-BR>)", () => {
   const PT_NAV = {
     Workspace: ["MCP e integrações", "Skills", "Regras"],
     Modelos: ["Modelo e provedor"],
-    Interface: ["Geral", "Conta", "Aparência", "Personalização"],
+    Interface: ["Geral", "Aparência", "Personalização"],
   } as const;
 
   function inPortuguese<T>(run: () => T): T {

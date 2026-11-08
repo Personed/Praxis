@@ -24,18 +24,10 @@ function model(
 
 const MODELS: ModelInfo[] = [
   model({
-    id: "modus/deepseek/deepseek-flash",
+    id: "deepseek/deepseek-flash",
     name: "Flash",
-    provider: "modus",
-    providerName: "Modus",
-  }),
-  model({
-    id: "modus/anthropic/claude-fable-5-1",
-    name: "Fable",
-    provider: "modus",
-    providerName: "Modus",
-    locked: "upgrade",
-    unlockPack: { id: "credits_25k", credits: 25000 },
+    provider: "deepseek",
+    providerName: "DeepSeek",
   }),
   model({ id: "openai/gpt-x", name: "GPT X", provider: "openai", providerName: "OpenAI" }),
 ];
@@ -46,7 +38,7 @@ describe("L3b0 Settings default model picker", () => {
     const onSetDefaultModel = vi.fn();
     render(
       <DefaultModelSetting
-        defaultModel="modus/deepseek/deepseek-flash"
+        defaultModel="deepseek/deepseek-flash"
         models={MODELS}
         onSetDefaultModel={onSetDefaultModel}
       />,
@@ -56,7 +48,7 @@ describe("L3b0 Settings default model picker", () => {
     expect(select.textContent).not.toMatch(/\p{Extended_Pictographic}/u);
     await user.click(select);
     const listbox = screen.getByRole("listbox");
-    expect(within(listbox).getByRole("group", { name: "Modus" })).toBeTruthy();
+    expect(within(listbox).getByRole("group", { name: "DeepSeek" })).toBeTruthy();
     expect(within(listbox).getByRole("group", { name: "OpenAI" })).toBeTruthy();
     expect(
       within(listbox)
@@ -78,11 +70,11 @@ describe("L3b0 Settings default model picker", () => {
       />,
     );
     const select = screen.getByRole("combobox", { name: "Default model" });
-    expect(select.textContent).toBe("Fable (unavailable)");
+    expect(select.textContent).toBe("modus/anthropic/claude-fable-5-1 (unavailable)");
     expect(onSetDefaultModel).not.toHaveBeenCalled();
     await user.click(select);
     await user.click(screen.getByRole("option", { name: "Flash" }));
-    expect(onSetDefaultModel).toHaveBeenCalledWith("modus/deepseek/deepseek-flash");
+    expect(onSetDefaultModel).toHaveBeenCalledWith("deepseek/deepseek-flash");
   });
 
   it("never hides a BYOK model, even if it carries a locked flag", async () => {
@@ -95,7 +87,6 @@ describe("L3b0 Settings default model picker", () => {
             name: "GPT X",
             provider: "openai",
             providerName: "OpenAI",
-            locked: "upgrade",
           }),
         ]}
         onSetDefaultModel={vi.fn()}

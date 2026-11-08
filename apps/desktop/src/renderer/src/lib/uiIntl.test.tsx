@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { formatCredits, formatMoney } from "../features/settings/sections/account-billing";
 import { formatClock } from "./formatClock";
 import {
   formatUiCompactAge,
@@ -34,7 +33,6 @@ describe("dates and numbers follow the app language (<html lang>)", () => {
     expect(formatUiRelativeTime(5 * MIN)).toBe("5m ago");
     expect(formatUiRelativeTime(10_000)).toBe("now");
     expect(formatUiCompactAge(5 * MIN)).toBe("5m");
-    expect(formatCredits(5000)).toBe("5,000");
     expect(formatClock(date.getTime(), date)).toBe("9:05 PM");
   });
 
@@ -46,8 +44,6 @@ describe("dates and numbers follow the app language (<html lang>)", () => {
     expect(formatUiRelativeTime(10_000)).toBe("agora");
     expect(formatUiRelativeTime(3 * 24 * 60 * MIN)).toBe("há 3 dias");
     expect(formatUiCompactAge(5 * MIN)).toBe("5 min");
-    expect(formatCredits(5000)).toBe("5.000");
-    expect(formatMoney(3690, "BRL").replace(/\s/g, " ")).toBe("R$ 36,90");
     expect(formatClock(date.getTime(), date)).toBe("21:05");
   });
 
