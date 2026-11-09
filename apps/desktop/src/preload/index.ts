@@ -1,9 +1,7 @@
 import type { IpcRendererEvent } from "electron";
 import { contextBridge, ipcRenderer } from "electron";
 import type { AppearanceState } from "../shared/appearance";
-import type { AuthState } from "../shared/auth";
 import type { AutomationServiceEvent } from "../shared/automations";
-import type { BillingState } from "../shared/billing";
 import type {
   AgentEvent,
   BrowserEvent,
@@ -465,36 +463,6 @@ const api: ModusApi = {
         callback(payload as UpdateState);
       ipcRenderer.on("update:state-event", listener);
       return () => ipcRenderer.removeListener("update:state-event", listener);
-    },
-  },
-  auth: {
-    getState: () => ipcRenderer.invoke("auth:get-state") as Promise<AuthState>,
-    signUp: (input) => ipcRenderer.invoke("auth:sign-up", input) as Promise<AuthState>,
-    signInWithPassword: (input) =>
-      ipcRenderer.invoke("auth:sign-in-password", input) as Promise<AuthState>,
-    signInWithOAuth: (input) =>
-      ipcRenderer.invoke("auth:sign-in-oauth", input) as Promise<AuthState>,
-    cancelOAuth: () => ipcRenderer.invoke("auth:cancel-oauth") as Promise<AuthState>,
-    signOut: () => ipcRenderer.invoke("auth:sign-out") as Promise<AuthState>,
-    onStateChange: (callback) => {
-      const listener = (_event: IpcRendererEvent, payload: unknown) =>
-        callback(payload as AuthState);
-      ipcRenderer.on("auth:state-event", listener);
-      return () => ipcRenderer.removeListener("auth:state-event", listener);
-    },
-  },
-  billing: {
-    getState: () => ipcRenderer.invoke("billing:get-state") as Promise<BillingState>,
-    refresh: () => ipcRenderer.invoke("billing:refresh") as Promise<BillingState>,
-    checkout: (input) => ipcRenderer.invoke("billing:checkout", input) as Promise<BillingState>,
-    openPortal: () => ipcRenderer.invoke("billing:portal") as Promise<BillingState>,
-    cancelSubscription: () => ipcRenderer.invoke("billing:cancel") as Promise<BillingState>,
-    buyCredits: (input) => ipcRenderer.invoke("billing:buyCredits", input) as Promise<BillingState>,
-    onStateChange: (callback) => {
-      const listener = (_event: IpcRendererEvent, payload: unknown) =>
-        callback(payload as BillingState);
-      ipcRenderer.on("billing:state-event", listener);
-      return () => ipcRenderer.removeListener("billing:state-event", listener);
     },
   },
   clipboard: {

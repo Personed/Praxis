@@ -59,7 +59,6 @@
     "@streamdown/code": "^2.0.0",
     "@streamdown/math": "^1.0.2",
     "@streamdown/mermaid": "^1.0.2",
-    "@supabase/supabase-js": "^2.117.2",
     "@tabler/icons-react": "^3.44.0",
     "@tanstack/react-virtual": "3.14.13",
     "@tryopenbot/agent-avatar": "^0.2.0",

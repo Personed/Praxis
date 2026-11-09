@@ -961,7 +961,6 @@ export function App() {
           name: item.name,
           provider: item.provider,
           ...(item.providerName ? { providerName: item.providerName } : {}),
-          ...(item.locked ? { locked: true } : {}),
         })),
     [models],
   );
@@ -1477,7 +1476,6 @@ export function App() {
                                     contextUsage={contextUsageBySession[visibleSession.id]}
                                     defaultModel={model}
                                     modelsReady={modelSettings !== null}
-                                    modusStatus={modelSettings?.modus}
                                     hub={hubRef.current}
                                     initialEvents={initialEventsBySession[visibleSession.id]}
                                     key={visibleSession.id}

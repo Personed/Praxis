@@ -45,7 +45,7 @@ Windows installers are unsigned; macOS builds are ad-hoc signed and not notarize
 
 ## What you can do
 
-- **Choose your models.** Connect supported providers, configure custom compatible endpoints, or use account-backed Modus models when signed in. You control the model, provider, and available reasoning settings.
+- **Choose your models.** Connect supported providers, configure custom compatible endpoints, or run local models. You control the model, provider, and available reasoning settings.
 - **Plan, then build.** Develop a reviewable plan, answer structured questions, and move into implementation. The built-in `define-goal` skill can keep an objective, completion criteria, and evidence attached to a session.
 - **Work with agents.** Reuse agents with animated avatars, delegate to specialized subagents, review their worktrees, or collaborate in Agent Groups with a coordinator and shared conversation.
 - **Keep the project in context.** Attach files, folders, images, documents, diffs, terminal output, browser state, and selected page elements. Fast Codebase provides a local code map; project memory and context compaction help carry work across turns.
@@ -58,7 +58,7 @@ The Harness coordinates context, task state, verification evidence, and recovery
 ## Start working
 
 1. Open a local project or start a standalone chat.
-2. Select your model and connect its provider in **Settings → Model & Provider**. Modus account features are in **Settings → Account**.
+2. Select your model and connect its provider in **Settings → Model & Provider**.
 3. Send your prompt in **Build**, or switch to **Plan** first. Review changes and activity as the agent works.
 
 Approval settings are available globally and per project in **Settings → General**.
@@ -144,10 +144,9 @@ Installers are written to `apps/desktop/dist/`. Release automation, update chann
 | Path | Contents |
 | --- | --- |
 | `apps/desktop/` | Electron app: main process, preload bridge, React UI, and shared contracts |
-| `apps/site/` | Website and billing pages |
+| `apps/site/` | Static website |
 | `crates/` | Rust PTY host, REA supervisor, and plugin isolation components |
 | `catalog/` | Generated model and provider catalog |
-| [`docs/db/`](./docs/db/README.md) | Account and billing backend, migrations, functions, and tests |
 | `scripts/` | Catalog generation and development utilities |
 | `docs/` | Architecture, security and release notes, and media |
 

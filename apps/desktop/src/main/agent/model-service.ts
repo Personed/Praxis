@@ -42,14 +42,12 @@ import {
   parseModelCatalog,
   startModelCatalogUpdates,
 } from "./model-catalog-service";
-import type { ModusProvider } from "./modus-provider";
 import { createAntigravityStream } from "./providers/antigravity-adapter";
 import {
   createAntigravityOAuthProvider,
   shutdownAntigravityAuth,
 } from "./providers/antigravity-oauth";
 import { commandCodeStream } from "./providers/commandcode-adapter";
-import { MODUS_PROVIDER_ID } from "./providers/modus-router-adapter";
 import {
   ANTIGRAVITY_API_ID,
   COMMANDCODE_API_ID,
@@ -123,13 +121,13 @@ const THINKING_LEVELS: ThinkingLevel[] = [
   "xhigh",
   "max",
 ];
+const REMOVED_PROVIDER_ID = "modus";
 const DEFAULT_CUSTOM_API = "openai-completions";
 const DEFAULT_CONTEXT_WINDOW = 128_000;
 const DEFAULT_MAX_TOKENS = 16_384;
 const DEFAULT_COST = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 const DEFAULT_MODEL_INPUT: ModelInputKind[] = ["text"];
 const DEFAULT_PROVIDER_ORDER = [
-  MODUS_PROVIDER_ID,
   "anthropic",
   "openai",
   "google",
@@ -205,20 +203,10 @@ function registerAntigravityOAuth(modelRegistry: ModelRegistry): void {
 
 const nativeProviders = new Set<string>();
 
-/** B4b: the Modus provider (installed by main once auth exists; absent in tests / no auth). */
-let modusProvider: ModusProvider | undefined;
-
-export function setModusProvider(provider: ModusProvider | undefined): void {
-  modusProvider = provider;
-  if (!registry) return;
-  if (!provider) registry.unregisterProvider(MODUS_PROVIDER_ID);
-  applyModelCatalog(registry, activeCatalog);
-}
-
-/** "modus" is reserved for the router provider: no BYOK key, base URL, headers or custom id. */
+/** Reject legacy provider IDs so saved account configuration cannot be reactivated. */
 function assertNotModusProvider(provider: string): void {
-  if (provider.trim().toLowerCase() === MODUS_PROVIDER_ID) {
-    throw new Error("Modus models use your Modus account and cannot be configured here.");
+  if (provider.trim().toLowerCase() === REMOVED_PROVIDER_ID) {
+    throw new Error("The Modus provider has been removed. Connect a local or external provider.");
   }
 }
 
@@ -239,8 +227,8 @@ function assertNoNativeProviderCollisions(
     ids.add(model.id);
     bundledIds.set(model.provider, ids);
   }
-  if (catalog.providers[MODUS_PROVIDER_ID]) {
-    throw new Error(`Native provider collision: ${MODUS_PROVIDER_ID}`);
+  if (catalog.providers[REMOVED_PROVIDER_ID]) {
+    throw new Error(`Native provider collision: ${REMOVED_PROVIDER_ID}`);
   }
   const entries = Object.entries(nativeProviderManifest.providers);
   for (const [provider, manifest] of entries) {
@@ -480,7 +468,7 @@ function applyModelCatalog(modelRegistry: ModelRegistry, catalog: ModelCatalog):
   }
   for (const [provider, config] of providers) modelRegistry.registerProvider(provider, config);
   registerNativeProviders(modelRegistry, catalog);
-  modusProvider?.register(modelRegistry);
+  modelRegistry.unregisterProvider(REMOVED_PROVIDER_ID);
   catalogProviders = nextProviders;
   catalogReasoningCapabilities = new Map(
     Object.entries(catalog.providers).flatMap(([provider, models]) =>
@@ -505,8 +493,6 @@ export function startRemoteModelCatalog(onChanged: () => void): void {
     currentCatalog: activeCatalog,
     onCatalog: (catalog) => {
       applyModelCatalog(modelRegistry, catalog);
-      // B4b: a failed /v1/models is retried once per catalog load (no loop).
-      modusProvider?.retryIfUnavailable();
       onChanged();
     },
   });
@@ -519,7 +505,6 @@ export function stopRemoteModelCatalog(): void {
 
 export async function refreshRemoteModelCatalog(): Promise<ModelSettingsState> {
   await forceModelCatalogRefresh();
-  modusProvider?.retryIfUnavailable();
   return getModelSettings();
 }
 
@@ -563,6 +548,9 @@ function splitModelId(modelId: string | undefined): { provider: string; id: stri
 
 export function findModel(modelId: string | undefined): Model<Api> | undefined {
   const parsed = splitModelId(modelId);
+  if (parsed?.provider.trim().toLowerCase() === REMOVED_PROVIDER_ID) {
+    throw new Error("The paid Modus provider is disabled. Select a local or BYOK model.");
+  }
   if (!parsed) {
     return undefined;
   }
@@ -726,7 +714,7 @@ function isModelEnabled(
   provider: string,
   config: Pick<ModelConfigRow, "enabled"> | undefined,
 ): boolean {
-  return config ? Boolean(config.enabled) : provider === MODUS_PROVIDER_ID;
+  return provider !== REMOVED_PROVIDER_ID && Boolean(config?.enabled);
 }
 
 function upsertModelConfig(input: {
@@ -1040,9 +1028,6 @@ function modelToInfo(
   const source = config?.source ?? "builtin";
   const contextWindow = config?.context_window ?? model.contextWindow;
   const maxTokens = config?.max_tokens ?? model.maxTokens;
-  const modus = model.provider === MODUS_PROVIDER_ID;
-  const locked = modus && modusProvider?.lockedIds().has(id);
-  const unlockPack = locked ? (modusProvider?.unlockPack(id) ?? undefined) : undefined;
   return {
     id,
     provider: model.provider,
@@ -1060,8 +1045,6 @@ function modelToInfo(
     thinkingVariant: thinking.selected.value,
     thinkingOptions: thinking.options,
     ...(thinking.budget ? { thinkingBudget: thinking.budget } : {}),
-    ...(locked ? { locked: "upgrade" as const } : {}),
-    ...(locked && unlockPack ? { unlockPack } : {}),
   };
 }
 
@@ -1086,12 +1069,7 @@ function listModelsFromRegistry(modelRegistry: ModelRegistry): ModelInfo[] {
     const providerOrder =
       providerSortIndex(a.provider) - providerSortIndex(b.provider) ||
       (a.providerName ?? a.provider).localeCompare(b.providerName ?? b.provider);
-    // Locked (not in plan) Modus models go after the usable ones.
-    return (
-      providerOrder ||
-      Number(Boolean(a.locked)) - Number(Boolean(b.locked)) ||
-      a.name.localeCompare(b.name)
-    );
+    return providerOrder || a.name.localeCompare(b.name);
   });
 
   return configuredInfos;
@@ -1145,6 +1123,10 @@ function listProvidersFromRegistry(modelRegistry: ModelRegistry): ModelProviderI
     providerIds.add(config);
   }
 
+  // Hide legacy paid-provider rows without modifying persisted configuration or credentials.
+  providerIds.forEach((provider) => {
+    if (provider.trim().toLowerCase() === REMOVED_PROVIDER_ID) providerIds.delete(provider);
+  });
   const providers = [...providerIds].map((provider) => {
     const row = providerConfigs.get(provider);
     const providerModels = modelRegistry.getAll().filter((model) => model.provider === provider);
@@ -1238,15 +1220,10 @@ export function getModelSettings(): ModelSettingsState {
   const modelRegistry = refreshRegistry();
   const models = listModelsFromRegistry(modelRegistry);
   const defaultModel = getDefaultModelId(models);
-  const modusDefaultModel = getModusTurnModelId(models);
-  const modusPlan = modusProvider?.status() === "ready" ? modusProvider.plan() : undefined;
   return {
     providers: listProvidersFromRegistry(modelRegistry),
     models,
     ...(defaultModel ? { defaultModel } : {}),
-    ...(modusDefaultModel ? { modusDefaultModel } : {}),
-    ...(modusPlan ? { modusPlan } : {}),
-    ...(modusProvider && modusProvider.status() !== "off" ? { modus: modusProvider.status() } : {}),
   };
 }
 
@@ -2240,31 +2217,14 @@ export function getDefaultModelId(models = listModels()): string | undefined {
 
   // With no saved selection, derive the first usable app default. A configured value never
   // reaches this branch merely because its model/provider became unavailable.
-  const usable = models.filter((model) => model.enabled && !model.locked);
-  const modus = modusProvider?.status() === "ready" ? modusPlanOrFirst(usable) : undefined;
-  return modus ?? usable.find((model) => model.provider !== MODUS_PROVIDER_ID)?.id ?? usable[0]?.id;
-}
-
-/** The plan default if it is a usable Modus model, else the first usable Modus model. */
-function modusPlanOrFirst(usable: readonly ModelInfo[]): string | undefined {
-  const modus = usable.filter((model) => model.provider === MODUS_PROVIDER_ID);
-  const plan = modusProvider?.defaultModelId();
-  return (modus.find((model) => model.id === plan) ?? modus[0])?.id;
-}
-
-/** Modus's current usable default, exposed for account/settings display only. */
-export function getModusTurnModelId(models = listModels()): string | undefined {
-  const usable = models.filter(
-    (model) => model.provider === MODUS_PROVIDER_ID && model.enabled && !model.locked,
-  );
-  const configured = readSetting("model.default");
-  if (configured && usable.some((model) => model.id === configured)) return configured;
-  return modusPlanOrFirst(usable);
+  const usable = models.filter((model) => model.provider !== REMOVED_PROVIDER_ID && model.enabled);
+  return usable[0]?.id;
 }
 
 /** Whether the exact model id is present in the current usable catalog. */
 export function isUsableModelId(modelId: string, models = listModels()): boolean {
-  return models.some((model) => model.id === modelId && model.enabled && !model.locked);
+  if (splitModelId(modelId)?.provider.trim().toLowerCase() === REMOVED_PROVIDER_ID) return false;
+  return models.some((model) => model.id === modelId && model.enabled);
 }
 
 export function getModelThinkingLevel(modelId: string | undefined): ThinkingLevel {
@@ -2366,13 +2326,11 @@ export function setDefaultModel(modelId: string | undefined): void {
   if (!target) {
     throw new Error(`Model is not enabled: ${modelId}`);
   }
-  // L3b0: a locked (not in plan) Modus model is never the default; the UI offers credits instead.
-  if (target.locked) throw new Error(`Model is not in your plan: ${modelId}`);
   writeSetting("model.default", modelId);
 }
 
 export function cycleDefaultModel(direction: "forward" | "backward" = "forward"): ModelInfo {
-  const models = listModels().filter((model) => !model.locked);
+  const models = listModels();
   if (models.length === 0) {
     throw new Error("No Modus models are configured. Open Settings to connect a provider.");
   }
@@ -2555,12 +2513,7 @@ export async function completeWithModel(request: {
     ...(request.timeoutMs !== undefined ? { timeoutMs: request.timeoutMs } : {}),
     maxRetries: 0,
   };
-  // B4b: the Modus API is registered in pi-coding-agent's own pi-ai copy, not the root one
-  // `completeSimple` reads, so Modus models go straight to the adapter.
-  const message =
-    model.provider === MODUS_PROVIDER_ID && modusProvider
-      ? await modusProvider.stream(model, context, options).result()
-      : await completeSimple(model, context, options);
+  const message = await completeSimple(model, context, options);
   if (message.stopReason === "error" || message.stopReason === "aborted") {
     throw new Error(message.errorMessage ?? "The provider returned an error.");
   }
