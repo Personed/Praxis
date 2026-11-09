@@ -11,7 +11,6 @@ import {
 
 const NAV_LABELS = [
   "General",
-  "Account",
   "Model & Provider",
   "Appearance",
   "Personalization",
@@ -23,7 +22,7 @@ const NAV_LABELS = [
 const GROUPED_NAV = {
   Workspace: ["MCP & Integrations", "Skills", "Rules"],
   Models: ["Model & Provider"],
-  Interface: ["General", "Account", "Appearance", "Personalization"],
+  Interface: ["General", "Appearance", "Personalization"],
 } as const;
 
 const RENDERED_NAV_LABELS = Object.values(GROUPED_NAV).flat();
@@ -186,15 +185,15 @@ describe("Settings navigation search", () => {
 
   it("keeps the active section when it is filtered out of the nav", () => {
     const onSectionChange = vi.fn();
-    const markup = renderSidebar({ activeSection: "account", onSectionChange, query: "model" });
+    const markup = renderSidebar({ activeSection: "general", onSectionChange, query: "model" });
 
     expect(navLabels(markup)).toEqual(["Model & Provider"]);
     expect(activeNavLabel(markup)).toBeUndefined();
     expect(onSectionChange).not.toHaveBeenCalled();
 
-    const cleared = renderSidebar({ activeSection: "account", onSectionChange, query: "" });
+    const cleared = renderSidebar({ activeSection: "general", onSectionChange, query: "" });
     expect(navLabels(cleared)).toEqual(RENDERED_NAV_LABELS);
-    expect(activeNavLabel(cleared)).toBe("Account");
+    expect(activeNavLabel(cleared)).toBe("General");
     expect(onSectionChange).not.toHaveBeenCalled();
   });
 });

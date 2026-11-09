@@ -1,6 +1,4 @@
-## 2024-05-17 - ReadFileSync Event Loop Block
-**Learning:** `readFileSync` reads the entire file synchronously, even when we truncate the result later using `subarray`. For big workspace files (e.g. 50MB log files), this will pause the node event loop for hundreds of ms, causing noticeable UI stuttering via the IPC bottleneck.
-**Action:** Always allocate exactly the bytes needed via `fs.openSync`, `fs.readSync`, and `fs.closeSync` for workspace files accessed via `files-service`.
+## 2024-05-18 - ⚡ Bolt: Batch convert member sessions using json_each
 
 ## 2023-10-19 - [Bolt: Optimize readWorkspacePreview]
 **Learning:** `readFileSync` blocks the event loop in the main Electron process for long durations (e.g. 5+ seconds for repeated reads of a 50MB file).
@@ -35,3 +33,5 @@
 ## 2024-05-14 - Reject N+1 Optimization for One-Time Migrations
 **Learning:** Chunked database queries and apparent N+1 issues in local one-time migration scripts (like `groups-to-projects.ts`), especially those executing entirely within a single transaction, do not suffer from network-bound query latency. Attempting to optimize these by batching via `json_each` yields negligible performance gains (e.g., < 2% improvement for thousands of records).
 **Action:** Do not prematurely refactor N+1 patterns in Node.js SQLite (`node:sqlite`) one-time migration scripts. Always benchmark to prove a measured gain first, and explicitly avoid optimizing such scripts without demonstrable cost reduction.
+**Learning:** When using `node:sqlite`, replacing an N+1 sequence of calls running in a transaction with a batched update using `UPDATE ... FROM json_each(?)` avoids many crossings across the JS-to-C++ boundary. While SQLite handles loops within a transaction extremely efficiently (and often finishes in negligible wall-clock time), moving to a JSON-mapped batch with chunks (e.g., of 500) reduces function call overhead.
+**Action:** When a user explicitly requests batching N+1 SQLite queries, ensure the JSON string passed to `json_each` is chunked if it represents large dynamic arrays, and wrap it in a size check to avoid `json_each` syntax errors.

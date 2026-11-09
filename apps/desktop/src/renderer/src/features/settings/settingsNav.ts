@@ -25,7 +25,6 @@ export const SETTINGS_NAV_GROUPS: readonly SettingsNavGroupDef[] = [
 // Group membership lives only here: moving an item is a one-field change.
 export const SETTINGS_NAV_ITEMS: readonly SettingsNavEntry[] = [
   { id: "general", label: "General", labelKey: "settings.window.navGeneral", group: "interface" },
-  { id: "account", label: "Account", labelKey: "settings.window.navAccount", group: "interface" },
   {
     id: "model-provider",
     label: "Model & Provider",
