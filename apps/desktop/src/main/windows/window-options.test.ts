@@ -38,6 +38,20 @@ describe("windowChromeOptionsFor", () => {
     });
   });
 
+  it.each([
+    "10.0.19045",
+    "10.0.22000",
+    "unknown",
+  ])("hides the system title bar without Acrylic on Windows %s", (version) => {
+    expect(windowChromeOptionsFor(resolveWindowAppearance("win32", version))).toMatchObject({
+      frame: false,
+      titleBarStyle: "hidden",
+      titleBarOverlay: { height: 36 },
+      backgroundMaterial: "none",
+      transparent: false,
+    });
+  });
+
   it("sets visible caption colors before first paint in each Windows theme", () => {
     const host = resolveWindowAppearance("win32", "10.0.22621");
     expect(

@@ -105,10 +105,8 @@ import {
   updateAgent,
 } from "../agents/agents-store";
 import type { AppearanceController } from "../appearance/appearance-controller";
-import { authIpcService } from "../auth/auth-service-instance";
 import { registerAutomationIpcHandlers } from "../automations/automation-ipc";
 import { getAutomationService } from "../automations/automation-service-instance";
-import { billingIpcService } from "../billing/billing-service-instance";
 import { deleteBrowserRecent, listBrowserRecents } from "../browser/browser-recents-store";
 import {
   closeBrowserTab,
@@ -236,8 +234,6 @@ import { getWorkspace, upsertWorkspace } from "../workspace/workspace-store";
 import { registerAdaptiveHarnessIpcHandlers } from "./adaptive-harness-ipc";
 import { registerAgentsIpcHandlers } from "./agents-ipc";
 import { registerAppearanceIpcHandlers } from "./appearance-ipc";
-import { registerAuthIpcHandlers } from "./auth-ipc";
-import { registerBillingIpcHandlers } from "./billing-ipc";
 import { IPC_CHANNELS } from "./channels";
 import { registerComposioIpcHandlers } from "./composio-ipc";
 import { toGroupIpcError } from "./group-ipc";
@@ -1607,16 +1603,13 @@ export function registerAppIpc({
   });
 
   registerUpdateIpcHandlers(ipcMain, assertTrustedSender, getUpdateService());
-  registerAuthIpcHandlers(ipcMain, assertTrustedSender, authIpcService);
-  registerBillingIpcHandlers(ipcMain, assertTrustedSender, billingIpcService);
 
   // Deleting an agent takes its 1:1 chats with it: the store transaction
   // detaches them, then each tree is torn down (subagents, runtime, checkpoints) after the
   // commit, before the IPC answers (agents/agent-teardown).
   // The agent model rule: a model of a configured provider (listModels).
   // B4b: a locked (not in plan) Modus model is listed for the picker but is not usable.
-  const isModelAvailable = (modelId: string) =>
-    listModels().some((model) => model.id === modelId && !model.locked);
+  const isModelAvailable = (modelId: string) => listModels().some((model) => model.id === modelId);
   registerAgentsIpcHandlers(ipcMain, assertTrustedSender, {
     listAgents,
     createProfile,

@@ -5,28 +5,22 @@ import { ModusUnavailableNotice } from "./ModusUnavailableNotice";
 
 afterEach(() => cleanup());
 
-describe("L3b0 ModusUnavailableNotice", () => {
-  it("shows inline (no modal) for a Modus session while Modus is unavailable", () => {
+describe("legacy model availability notice", () => {
+  it("shows inline for the legacy model without suggesting account or purchase", () => {
     render(
       <ModusUnavailableNotice
         modelIds={["openai/gpt-x", "modus/deepseek/deepseek-flash"]}
-        status="unavailable"
       />,
     );
     const notice = screen.getByTestId("modus-unavailable-notice");
     expect(notice.getAttribute("role")).toBe("status");
-    expect(notice.textContent).toMatch(/Modus is unavailable right now/);
+    expect(notice.textContent).toMatch(/model is no longer available/i);
+    expect(notice.textContent).not.toMatch(/sign in|login|credit|upgrade|buy/i);
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("does not show for an own-provider session, nor when Modus is ready or off", () => {
-    const { rerender } = render(
-      <ModusUnavailableNotice modelIds={["openai/gpt-x", undefined]} status="unavailable" />,
-    );
-    expect(screen.queryByTestId("modus-unavailable-notice")).toBeNull();
-    rerender(<ModusUnavailableNotice modelIds={["modus/zai/glm"]} status="ready" />);
-    expect(screen.queryByTestId("modus-unavailable-notice")).toBeNull();
-    rerender(<ModusUnavailableNotice modelIds={["modus/zai/glm"]} status={undefined} />);
+  it("does not show for a user-configured provider", () => {
+    render(<ModusUnavailableNotice modelIds={["openai/gpt-x", undefined]} />);
     expect(screen.queryByTestId("modus-unavailable-notice")).toBeNull();
   });
 });

@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { PickableModel } from "../../lib/modusModels";
+import type { PickableModel } from "../../lib/modelPickerModels";
 import { ModelPicker } from "./ModelPicker";
 
 /** Keyboard-highlighted picker row gets the 2px accent ring; pointer hover keeps only the fill. */

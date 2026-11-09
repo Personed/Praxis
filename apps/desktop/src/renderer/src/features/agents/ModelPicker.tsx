@@ -2,7 +2,7 @@ import { Combobox } from "@base-ui/react/combobox";
 import { IconCheck, IconChevronDown, IconSearch, IconSelector } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 import { cn } from "../../lib/cn";
-import { buildModelPickerGroups, type PickableModel } from "../../lib/modusModels";
+import { buildModelPickerGroups, type PickableModel } from "../../lib/modelPickerModels";
 import {
   MODEL_CHIP_BASE,
   MODEL_CHIP_INTERACTIVE,
@@ -45,8 +45,8 @@ function matches(item: PickerItem, query: string): boolean {
 
 /**
  * The agent dialog's model picker: a searchable popover over `buildModelPickerGroups`
- * (provider groups with logo + name, loose "App default" / "(unavailable)" on top, locked
- * Modus models hidden). Base UI Combobox with the input inside the popup: the trigger is the
+ * (provider groups with logo + name, loose "App default" / "(unavailable)" on top, removed
+ * provider models hidden). Base UI Combobox with the input inside the popup: the trigger is the
  * `combobox`, the list a `listbox` with `group`s and `option`s; arrows / Enter / Esc and
  * closed-trigger typeahead come from the primitive, and Esc returns focus to the trigger.
  * Same value semantics as the native select it replaces: `value` is a model id, "" is the
