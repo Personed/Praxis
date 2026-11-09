@@ -448,7 +448,7 @@ function AutomationEditor({
 }) {
   const projects = workspaces.filter((workspace) => !workspace.inbox);
   const availableModels = models.filter(
-    (model) => model.available && model.enabled && model.configured && !model.locked,
+    (model) => model.available && model.enabled && model.configured,
   );
   const firstSchedule = initial?.schedule;
   const [name, setName] = useState(initial?.name ?? "");

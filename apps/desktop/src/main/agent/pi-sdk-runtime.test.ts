@@ -1127,7 +1127,7 @@ describe("PiSdkRuntime", () => {
     );
   });
 
-  it("agent:cycle-model skips unavailable, disabled, locked and unusable models", async () => {
+  it("agent:cycle-model skips unavailable, disabled and unusable models", async () => {
     const sessionId = `session-${crypto.randomUUID()}`;
     insertSession(sessionId, `workspace-${crypto.randomUUID()}`, join(userData, "missing.jsonl"));
     getDatabase().prepare("update agent_sessions set model = ? where id = ?").run("p/a", sessionId);
@@ -1141,7 +1141,6 @@ describe("PiSdkRuntime", () => {
       row("p/a"),
       row("p/unavailable", { available: false }),
       row("p/disabled", { enabled: false }),
-      row("p/locked", { locked: "upgrade" }),
       row("p/unusable"),
       row("p/b"),
     ] as never);

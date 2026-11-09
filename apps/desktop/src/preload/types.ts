@@ -1,6 +1,5 @@
 import type { AgentEventPage, AgentEventPageOptions } from "../shared/agent-events";
 import type { AppearanceSetInput, AppearanceState } from "../shared/appearance";
-import type { AuthCredentialsInput, AuthOAuthInput, AuthState } from "../shared/auth";
 import type {
   AutomationDefinition,
   AutomationExecution,
@@ -8,7 +7,6 @@ import type {
   CreateAutomationRequest,
   UpdateAutomationRequest,
 } from "../shared/automations";
-import type { BillingBuyCreditsInput, BillingCheckoutInput, BillingState } from "../shared/billing";
 import type {
   AbortAgentResult,
   AddDocInput,
@@ -691,38 +689,6 @@ export type ModusApi = {
     /** Once per start: the UI state saved by the previous version, or null. */
     takeRestoredUiState(): Promise<UpdateRestoreUiState | null>;
     onStateChange(listener: (state: UpdateState) => void): () => void;
-  };
-  /**
-   * Modus account (Supabase Auth). Sign-in runs in main; replies carry display data only,
-   * never tokens or the OAuth code.
-   */
-  auth: {
-    getState(): Promise<AuthState>;
-    signUp(input: AuthCredentialsInput): Promise<AuthState>;
-    signInWithPassword(input: AuthCredentialsInput): Promise<AuthState>;
-    /** Opens the default browser; resolves after the callback was handled, failed or timed out. */
-    signInWithOAuth(input: AuthOAuthInput): Promise<AuthState>;
-    cancelOAuth(): Promise<AuthState>;
-    /** Clears the stored session even when offline. */
-    signOut(): Promise<AuthState>;
-    onStateChange(listener: (state: AuthState) => void): () => void;
-  };
-  /**
-   * Plan and credits (Mercado Pago, optionally Stripe, via Supabase Edge Functions). Checkout /
-   * Portal open in the default browser; replies carry display data only, never tokens, provider
-   * ids or session URLs.
-   */
-  billing: {
-    getState(): Promise<BillingState>;
-    refresh(): Promise<BillingState>;
-    /** Only a plan key (+ provider, default Mercado Pago); the server maps it to the price. */
-    checkout(input: BillingCheckoutInput): Promise<BillingState>;
-    openPortal(): Promise<BillingState>;
-    /** L1e: cancel the own Mercado Pago subscription; main finds it, no id is passed. */
-    cancelSubscription(): Promise<BillingState>;
-    /** L5b: Mercado Pago Checkout Pro for a credit pack (only the pack id crosses IPC). */
-    buyCredits(input: BillingBuyCreditsInput): Promise<BillingState>;
-    onStateChange(listener: (state: BillingState) => void): () => void;
   };
   clipboard: {
     /** Write PNG bytes to the OS clipboard as an image. */
