@@ -25,11 +25,12 @@ function windowsBuild(systemVersion: string): number | undefined {
 export function resolveWindowAppearance(platform: string, systemVersion: string): WindowAppearance {
   if (platform === "darwin") return { chrome: "macos", glass: "native" };
 
-  if (
-    platform === "win32" &&
-    (windowsBuild(systemVersion) ?? 0) >= WINDOWS_BACKDROP_MINIMUM_BUILD
-  ) {
-    return { chrome: "windows-overlay", glass: "native" };
+  if (platform === "win32") {
+    return {
+      chrome: "windows-overlay",
+      glass:
+        (windowsBuild(systemVersion) ?? 0) >= WINDOWS_BACKDROP_MINIMUM_BUILD ? "native" : "solid",
+    };
   }
 
   return { chrome: "system", glass: "solid" };

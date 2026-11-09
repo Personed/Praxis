@@ -1,15 +1,10 @@
 import type { ModelInfo } from "../../../../shared/contracts";
-import { buildModelPickerGroups, selectableModels } from "../../lib/modusModels";
+import { buildModelPickerGroups, selectableModels } from "../../lib/modelPickerModels";
 import { useSettingsText } from "../../lib/settingsText";
 import { SelectField } from "./form-controls";
 import { SettingsList, SettingsRow } from "./settings-layout";
 
-/**
- * L3b0: the Settings default model (the model every 1:1 turn runs on, L2b). Grouped by
- * provider like every model picker (lib/modusModels buildModelPickerGroups); a locked Modus
- * model is not listed, and a saved default that is no longer listed stays as
- * "<name> (unavailable)" until another model is chosen.
- */
+/** Group by provider and preserve unavailable saved defaults until another model is chosen. */
 export function DefaultModelSetting({
   models,
   defaultModel,
@@ -27,7 +22,6 @@ export function DefaultModelSetting({
     name: model.name,
     provider: model.provider,
     providerName: model.providerName,
-    locked: Boolean(model.locked),
   }));
   const selectable = selectableModels(pickable);
   const picker = buildModelPickerGroups(pickable, defaultModel);

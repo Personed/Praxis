@@ -8,7 +8,6 @@ import {
   IconServerCog,
   IconSettings,
   IconUser,
-  IconUserCircle,
 } from "@tabler/icons-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { cn } from "../../../lib/cn";
@@ -23,7 +22,6 @@ import {
 
 const SETTINGS_NAV_ICONS: Record<SettingsSectionId, ReactNode> = {
   general: <IconSettings size={16} stroke={1.7} />,
-  account: <IconUserCircle size={16} stroke={1.7} />,
   "model-provider": <IconServerCog size={16} stroke={1.7} />,
   appearance: <IconPalette size={16} stroke={1.7} />,
   personalization: <IconUser size={16} stroke={1.7} />,

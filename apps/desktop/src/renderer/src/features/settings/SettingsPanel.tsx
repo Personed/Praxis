@@ -15,7 +15,6 @@ import { ContentTransition } from "../../components/ui/ContentTransition";
 import { cn } from "../../lib/cn";
 import { motionOffset, motionTransition, tween } from "../../lib/motion";
 import { useSettingsText } from "../../lib/settingsText";
-import { AccountSettingsPanel } from "./sections/account";
 import { AppearanceSettingsPanel } from "./sections/appearance";
 import { GeneralSettingsPanel } from "./sections/general";
 import { McpSettingsPanel } from "./sections/mcp";
@@ -553,9 +552,6 @@ export function SettingsPanel({
         >
           {activeSection === "general" ? (
             <GeneralSettingsPanel cwd={workspaceCwd} workspaces={workspaces} />
-          ) : null}
-          {activeSection === "account" ? (
-            <AccountSettingsPanel modusPlan={state?.modusPlan} modusStatus={state?.modus} />
           ) : null}
           {activeSection === "appearance" ? <AppearanceSettingsPanel /> : null}
           {activeSection === "personalization" ? <PersonalizationSettingsPanel /> : null}

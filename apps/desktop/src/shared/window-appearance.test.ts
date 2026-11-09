@@ -16,9 +16,9 @@ describe("resolveWindowAppearance", () => {
     });
   });
 
-  it("falls back to the native system frame and solid surfaces on older Windows", () => {
+  it("keeps the integrated Windows chrome with solid surfaces on older Windows", () => {
     expect(resolveWindowAppearance("win32", "10.0.19045")).toEqual({
-      chrome: "system",
+      chrome: "windows-overlay",
       glass: "solid",
     });
   });
@@ -30,9 +30,9 @@ describe("resolveWindowAppearance", () => {
     });
   });
 
-  it("treats malformed Windows version strings as unsupported", () => {
+  it("keeps the title bar hidden even when the Windows version is unknown", () => {
     expect(resolveWindowAppearance("win32", "unknown")).toEqual({
-      chrome: "system",
+      chrome: "windows-overlay",
       glass: "solid",
     });
   });

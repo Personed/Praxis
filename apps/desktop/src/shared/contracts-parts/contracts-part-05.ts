@@ -209,25 +209,7 @@ export type ModelInfo = {
   thinkingVariant?: string;
   thinkingOptions?: ThinkingOption[];
   thinkingBudget?: ThinkingBudget;
-  /**
-   * Modus (B4b): the model is listed by the router but not in the user's plan. Locked Modus
-   * models are hidden from every model picker (`selectableModels` / `buildModelPickerGroups`);
-   * a saved one is kept as an "(unavailable)" option. The router's 403 is the real barrier.
-   */
-  locked?: "upgrade";
-  /**
-   * L3b: locked Modus models only: the smallest credit pack that unlocks it (router
-   * `/v1/models` unlock_pack). Not shown by the pickers (locked models are hidden there);
-   * kept on the contract for the router data. Absent = unknown / no pack.
-   */
-  unlockPack?: { id: string; credits: number };
 };
-
-/**
- * Modus provider state for the picker (B4b): "off" signed out, "loading" first /v1/models,
- * "ready" models listed, "unavailable" the router answered an error (no models).
- */
-export type ModusModelsStatus = "off" | "loading" | "ready" | "unavailable";
 
 export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 export type ThinkingOption = {
@@ -318,15 +300,6 @@ export type ModelSettingsState = {
   providers: ModelProviderInfo[];
   models: ModelInfo[];
   defaultModel?: string;
-  /** B4b: Modus provider state (absent = off). */
-  modus?: ModusModelsStatus;
-  /** L3b: the model a Modus session's turn runs on (main getModusTurnModelId). */
-  modusDefaultModel?: string;
-  /**
-   * The plan the Modus router grants now (GET /v1/models `plan`): the subscription plan or, with
-   * unspent purchased credits, the pack's access plan. Only while Modus is ready.
-   */
-  modusPlan?: string;
 };
 
 export type ProviderUsageMetric = {
