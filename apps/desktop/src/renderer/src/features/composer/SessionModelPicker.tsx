@@ -3,8 +3,12 @@ import { IconCheck, IconChevronDown } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ModelInfo } from "../../../../shared/contracts";
 import { cn } from "../../lib/cn";
+import {
+  isHiddenPickerModel,
+  type PickableModel,
+  selectableModels,
+} from "../../lib/modelPickerModels";
 import { modelThinkingOptions, selectedThinkingOption } from "../../lib/modelThinking";
-import { type PickableModel, selectableModels } from "../../lib/modusModels";
 import { useShellText } from "../../lib/shellText";
 import { ModelPicker } from "../agents/ModelPicker";
 import { MODEL_CHIP_BASE, MODEL_CHIP_INTERACTIVE, MODEL_CHIP_TONE } from "./modelChipStyle";
@@ -25,13 +29,13 @@ type SessionModelPickerProps = {
   onChanged(): void;
 };
 
-/** Usable here = offered by the picker (locked Modus models hidden), enabled and available. */
+/** Sending requires an enabled, available model that the picker can offer. */
 export function isPickableModel(models: readonly ModelInfo[], modelId: string): boolean {
   const model = models.find((item) => item.id === modelId);
-  return Boolean(model && !model.locked && model.available && model.enabled);
+  return Boolean(model && !isHiddenPickerModel(model) && model.available && model.enabled);
 }
 
-/** The picker's view of the registry: usable models only (locked Modus ones hidden too). */
+/** The picker's view of the registry: usable local and external models only. */
 function pickableModels(models: readonly ModelInfo[]): PickableModel[] {
   return selectableModels(
     models
@@ -41,7 +45,6 @@ function pickableModels(models: readonly ModelInfo[]): PickableModel[] {
         name: model.name,
         provider: model.provider,
         providerName: model.providerName,
-        locked: Boolean(model.locked),
       })),
   );
 }
@@ -70,8 +73,7 @@ export function SessionModelPicker({
   const t = useShellText();
   const pickable = useMemo(() => pickableModels(models), [models]);
   const effectiveId = storedModelId || defaultModelId;
-  const blocked =
-    modelsReady && Boolean(storedModelId) && !isPickableModel(models, storedModelId ?? "");
+  const blocked = modelsReady && Boolean(effectiveId) && !isPickableModel(models, effectiveId);
   const effective = models.find((model) => model.id === effectiveId);
   const options = useMemo(() => (effective ? modelThinkingOptions(effective) : []), [effective]);
   const [effort, setEffort] = useState<string | undefined>(undefined);

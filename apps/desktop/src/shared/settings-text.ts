@@ -9,7 +9,6 @@
  */
 import { type GroupRoomLocale, resolveGroupRoomLocale } from "./group-room-locale";
 import { lookupCatalogText } from "./i18n-catalog";
-import { ACCOUNT_TEXT_EN, ACCOUNT_TEXT_PT } from "./settings-text/account";
 import { APPEARANCE_TEXT_EN, APPEARANCE_TEXT_PT } from "./settings-text/appearance";
 import { CUSTOM_PROVIDER_TEXT_EN, CUSTOM_PROVIDER_TEXT_PT } from "./settings-text/custom-provider";
 import { GENERAL_TEXT_EN, GENERAL_TEXT_PT } from "./settings-text/general";
@@ -25,7 +24,6 @@ import { WINDOW_TEXT_EN, WINDOW_TEXT_PT } from "./settings-text/window";
 export const SETTINGS_TEXT_EN = {
   ...WINDOW_TEXT_EN,
   ...GENERAL_TEXT_EN,
-  ...ACCOUNT_TEXT_EN,
   ...PROVIDERS_TEXT_EN,
   ...CUSTOM_PROVIDER_TEXT_EN,
   ...PROVIDER_UI_TEXT_EN,
@@ -42,7 +40,6 @@ export type SettingsTextKey = keyof typeof SETTINGS_TEXT_EN;
 export const SETTINGS_TEXT_PT: Record<SettingsTextKey, string> = {
   ...WINDOW_TEXT_PT,
   ...GENERAL_TEXT_PT,
-  ...ACCOUNT_TEXT_PT,
   ...PROVIDERS_TEXT_PT,
   ...CUSTOM_PROVIDER_TEXT_PT,
   ...PROVIDER_UI_TEXT_PT,

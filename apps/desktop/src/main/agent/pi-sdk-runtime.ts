@@ -6537,7 +6537,7 @@ export class PiSdkRuntime implements AgentRuntime {
 
     // Same rule as setModel: only models the picker would accept.
     const candidates = listModels().filter(
-      (model) => !model.locked && model.available && model.enabled && isUsableModelId(model.id),
+      (model) => model.available && model.enabled && isUsableModelId(model.id),
     );
     if (candidates.length === 0) throw new Error("No models are available to select.");
     const cachedSession = this.sessions.get(sessionId);

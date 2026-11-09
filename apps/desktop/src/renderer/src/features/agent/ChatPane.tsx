@@ -18,7 +18,6 @@ import type {
   ContextItem,
   ContextUsageInfo,
   ModelInfo,
-  ModusModelsStatus,
   PermissionDecision,
   PermissionRequest,
   PlanRef,
@@ -213,8 +212,6 @@ type ChatPaneProps = {
   defaultModel: string;
   /** False while the model catalog is still loading (`models` is empty, not "none usable"). */
   modelsReady?: boolean;
-  /** L3b0: Modus provider state (ModelSettingsState.modus) for the inline unavailable notice. */
-  modusStatus?: ModusModelsStatus | undefined;
   contextUsage?: ContextUsageInfo | undefined;
   workspace: WorkspaceInfo | null;
   initialEvents?: AgentEventItem[] | undefined;
@@ -511,7 +508,6 @@ export function ChatPane({
   hub,
   models,
   defaultModel,
-  modusStatus,
   contextUsage,
   workspace,
   initialEvents,
@@ -1519,10 +1515,7 @@ export function ChatPane({
                   />
                 ) : (
                   <>
-                    <ModusUnavailableNotice
-                      modelIds={[paneModel, session.model]}
-                      status={modusStatus}
-                    />
+                    <ModusUnavailableNotice modelIds={[paneModel, session.model]} />
                     {retryStatus ? <RetryStatusBar status={retryStatus} /> : null}
                     <QueuedPromptStrip items={queuedPrompts} onRemove={removeQueuedPrompt} />
                     <ComposerDock

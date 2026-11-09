@@ -21,7 +21,7 @@ import {
 } from "../../../../shared/contracts";
 import { shellText } from "../../../../shared/shell-text";
 import { cn } from "../../lib/cn";
-import { type PickableModel, selectableModels } from "../../lib/modusModels";
+import { type PickableModel, selectableModels } from "../../lib/modelPickerModels";
 import { MOTION_SPRING, reducedFade, tween } from "../../lib/motion";
 import { describeGroupError } from "../groups/groupErrors";
 import { AgentAvatar } from "./AgentAvatar";

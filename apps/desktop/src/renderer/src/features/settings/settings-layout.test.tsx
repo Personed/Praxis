@@ -92,7 +92,6 @@ describe("Settings pages carry no dividers", () => {
     "./ApprovalModeSettings.tsx",
     "./sections/general.tsx",
     "./sections/appearance.tsx",
-    "./sections/account.tsx",
     "./sections/model-provider.tsx",
     "./sections/mcp.tsx",
     "./sections/integrations.tsx",

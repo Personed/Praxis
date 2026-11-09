@@ -14,7 +14,6 @@ import {
   startRemoteModelCatalog,
   stopRemoteModelCatalog,
 } from "./agent/model-service";
-import { startModusProvider, stopModusProvider } from "./agent/modus-provider-instance";
 import { shutdownAgentRuntime } from "./agent/runtime-registry";
 import { disposeAllReaSessions } from "./agent/tools/rea-tools";
 import {
@@ -23,17 +22,11 @@ import {
 } from "./appearance/appearance-controller";
 import { createAppearanceStore } from "./appearance/appearance-store";
 import {
-  deepLinkCallbackHub,
-  initializeAuthService,
-  shutdownAuthService,
-} from "./auth/auth-service-instance";
-import {
   closeAutomationServiceWindow,
   startAutomationService,
   stopAutomationService,
   wakeAutomationService,
 } from "./automations/automation-service-instance";
-import { getBillingService, shutdownBillingService } from "./billing/billing-service-instance";
 import { resolveBrowserLocale } from "./browser/browser-locale";
 import {
   initializeComposioService,
@@ -46,11 +39,6 @@ import {
   openDatabaseAtStartup,
 } from "./db/database-startup";
 import { showMigrationSplash } from "./db/migration-splash";
-import {
-  createDeepLinkRouter,
-  findDeepLinkInArgv,
-  registerModusProtocol,
-} from "./deep-link/deep-link";
 import { IPC_CHANNELS } from "./ipc/channels";
 import { registerAppIpc } from "./ipc/register-app-ipc";
 import { installLocalModelsLogFile } from "./local-models/local-models-log-file";
@@ -174,45 +162,12 @@ function focusMainWindow(): void {
   mainWindow.focus();
 }
 
-// modus://auth/callback (deep-link OAuth transport) and modus://billing/return (Stripe).
-// Links that arrive before the window exists are queued until markReady().
-const deepLinks = createDeepLinkRouter({
-  onAuthCallback: (link) => {
-    deepLinkCallbackHub.deliver(link);
-  },
-  onBillingReturn: (link) => {
-    void getBillingService()
-      .handleReturn(link.status)
-      .catch(() => undefined);
-  },
-  focus: focusMainWindow,
-});
-
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  try {
-    registerModusProtocol(app, process);
-  } catch {
-    // Registration is best effort (e.g. sandboxed Linux without xdg-mime).
-  }
-
-  // macOS delivers modus:// links here (also before ready on a cold start).
-  app.on("open-url", (event, url) => {
-    event.preventDefault();
-    deepLinks.handle(url);
-  });
-
-  // Windows / Linux: a second launch carries the link in argv; this instance keeps the lock.
-  app.on("second-instance", (_event, argv) => {
+  app.on("second-instance", () => {
     focusMainWindow();
-    const link = findDeepLinkInArgv(argv);
-    if (link) deepLinks.handle(link);
   });
-
-  // Cold start on Windows / Linux with the link as an argument.
-  const launchLink = findDeepLinkInArgv(process.argv);
-  if (launchLink) deepLinks.handle(launchLink);
 
   app
     .whenReady()
@@ -262,8 +217,6 @@ if (!app.requestSingleInstanceLock()) {
       };
       startRemoteModelCatalog(notifyModelCatalogChanged);
       powerMonitor.on("resume", wakeAutomationService);
-      // B4b: the Modus provider follows the account session (registered only when signed in).
-      startModusProvider(notifyModelCatalogChanged);
       // Tool filter log lines also go to <userData>/logs/local-models.log (created on first line).
       installLocalModelsLogFile(join(app.getPath("userData"), "logs"));
       openMainWindow();
@@ -279,9 +232,6 @@ if (!app.requestSingleInstanceLock()) {
       }
       // Restore the profile after the first renderer exists; do not block agent startup on Composio.
       void initializeComposioService().catch(() => undefined);
-      // Restore the Supabase session (encrypted refresh token) without blocking the window.
-      void initializeAuthService().catch(() => undefined);
-      deepLinks.markReady();
       // No-op in dev, beta builds and unsupported platforms; first check runs after a delay.
       startUpdateServiceInBackground();
 
@@ -305,7 +255,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   // Electron does not await async event listeners: hold the first quit until
-  // auth callbacks and other owned resources have had a bounded drain.
+  // owned resources have had a bounded drain.
   let shutdownStarted = false;
   let allowQuitAfterShutdown = false;
   app.on("before-quit", (event) => {
@@ -321,9 +271,7 @@ if (!app.requestSingleInstanceLock()) {
     // The tool-filter model process (utilityProcess) never outlives the app.
     stopLocalModels();
     stopRemoteModelCatalog();
-    stopModusProvider();
     shutdownTerminals();
-    shutdownBillingService();
     void drainShutdown([
       (async () => {
         await stopAutomationService();
@@ -331,7 +279,6 @@ if (!app.requestSingleInstanceLock()) {
       })(),
       disposeAllReaSessions(),
       shutdownProviderAuthOperations(),
-      shutdownAuthService(),
       (async () => {
         try {
           await shutdownComposioService();

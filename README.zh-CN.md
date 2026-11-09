@@ -45,7 +45,7 @@ Windows 安装程序尚未签名；macOS 构建使用临时签名，尚未公证
 
 ## 主要功能
 
-- **自主选择模型。** 连接受支持的服务商，配置自定义兼容端点，或登录后使用 Modus 账户提供的模型。模型、服务商和可用的推理设置均由你选择。
+- **自主选择模型。** 连接受支持的服务商，配置自定义兼容端点，或使用本地模型。模型、服务商和可用的推理设置均由你选择。
 - **先规划，再实现。** 制定可审阅的计划，回答结构化问题，再进入实现。内置 `define-goal` 技能可以在会话中保存目标、完成标准和证据。
 - **与 Agent 协作。** 复用带动画头像的 Agent，将专项任务交给子 Agent，检查其 worktree，或在带协调者和共享对话的 Agent Groups 中协作。
 - **保留项目上下文。** 附加文件、文件夹、图片、文档、Git diff、终端输出、浏览器状态及选中的页面元素。Fast Codebase 提供本地代码地图；项目记忆和上下文压缩帮助衔接多轮工作。
@@ -58,7 +58,7 @@ Harness 在对话背后协调上下文、任务状态、验证证据和恢复。
 ## 开始使用
 
 1. 打开本地项目，或开始独立聊天。
-2. 在 **Settings → Model & Provider** 中选择模型并连接服务商。Modus 账户功能位于 **Settings → Account**。
+2. 在 **Settings → Model & Provider** 中选择模型并连接服务商。
 3. 在 **Build** 模式发送提示词，或先切换到 **Plan**。Agent 工作期间可查看改动和活动。
 
 可在 **Settings → General** 中设置全局及项目级审批策略。
@@ -147,7 +147,6 @@ npm --workspace @modus/desktop run package:linux -- --publish never
 | `apps/site/` | 网站与支付页面 |
 | `crates/` | Rust PTY host、REA supervisor 和插件隔离组件 |
 | `catalog/` | 生成的模型与服务商目录 |
-| [`docs/db/`](./docs/db/README.md) | 账户与计费后端、迁移、函数和测试 |
 | `scripts/` | 目录生成与开发工具 |
 | `docs/` | 架构、安全、发行说明和媒体资源 |
 
