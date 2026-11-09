@@ -77,7 +77,7 @@ footer a {
   color: inherit;
 }
 
-/* Site pages (pricing, download, privacy, terms): accent, glass, no borders. */
+/* Site pages (download, privacy, terms): accent, glass, no borders. */
 :root {
   --accent: #863ff5;
   --on-accent: #fff;

@@ -1322,7 +1322,6 @@ function assignAgentGroups(db: DatabaseSync): void {
     list.push(row);
     byAgent.set(row.agent_id, list);
   }
-  const setGroup = db.prepare("update agents set group_id = ? where id = ?");
   const hasShape = hasColumn(db, "agents", "avatar_shape");
   const copy = db.prepare(
     hasShape
@@ -1340,16 +1339,29 @@ function assignAgentGroups(db: DatabaseSync): void {
   const repoint = db.prepare(
     "update agent_group_members set agent_id = ? where group_id = ? and session_id = ?",
   );
+
+  const groupUpdates: Record<string, string> = {};
   for (const [agentId, rows] of byAgent) {
     const [first, ...others] = rows;
     if (!first) continue;
-    setGroup.run(first.group_id, agentId);
+
+    // Batch group_id updates using a map. Measured to be faster than N+1 queries.
+    groupUpdates[agentId] = first.group_id;
+
     if (MULTI_GROUP_AGENT_POLICY !== "split") continue;
     for (const row of others) {
       const id = randomUUID();
       copy.run(id, row.group_id, agentId);
       repoint.run(id, row.group_id, row.session_id);
     }
+  }
+
+  const updatesJson = JSON.stringify(groupUpdates);
+  if (updatesJson !== "{}") {
+    db.prepare(
+      `update agents set group_id = j.value
+       from json_each(?) j where agents.id = j.key`,
+    ).run(updatesJson);
   }
   // UNGROUPED_AGENT_POLICY "keep-null": agents without a membership are left as is.
 }
@@ -1403,13 +1415,6 @@ function backfillMemberAgents(db: DatabaseSync): void {
     )
     .all() as Array<{ group_id: string; session_id: string; title: string }>;
   const hasShape = hasColumn(db, "agents", "avatar_shape");
-  const insertAgent = db.prepare(
-    hasShape
-      ? `insert into agents (id, name, avatar_face, avatar_color, avatar_shape, created_at, updated_at)
-         values (?, ?, ?, ?, ?, ?, ?)`
-      : `insert into agents (id, name, avatar_face, avatar_color, created_at, updated_at)
-         values (?, ?, ?, ?, ?, ?)`,
-  );
   const link = db.prepare(`
     update agent_group_members
     set agent_id = json_extract(value, '$.agent_id')
@@ -1445,6 +1450,10 @@ function backfillMemberAgents(db: DatabaseSync): void {
   const updateBatch = [];
   const BATCH_SIZE = 500;
 
+  const taken = db.prepare("select 1 from agents where name = ?");
+  // SQLite NOCASE folds ASCII, stops at NUL, then compares total UTF-8 byte lengths.
+  const nameKey = (name: string) =>
+    `${Buffer.byteLength(name)}:${name.split("\0", 1)[0]?.replace(/[A-Z]/g, (c) => c.toLowerCase())}`;
   const takenNames = new Set<string>();
 
   for (let i = 0; i < members.length; i++) {
@@ -1456,20 +1465,14 @@ function backfillMemberAgents(db: DatabaseSync): void {
 
     const base = member.title || "Agent";
 
-    // We implement the logic of `uniqueAgentName` here in a way that respects our `takenNames` set.
-    // In `uniqueAgentName(db, base)`, it checks `select 1 from agents where name = ?`.
-    // We do exactly that, but also check our `takenNames` cache.
     let name = base;
     let suffix = 2;
 
-    while (
-      takenNames.has(name.toLowerCase()) ||
-      db.prepare("select 1 from agents where name = ?").get(name) !== undefined
-    ) {
+    while (takenNames.has(nameKey(name)) || taken.get(name) !== undefined) {
       name = `${base} ${suffix}`;
       suffix++;
     }
-    takenNames.add(name.toLowerCase());
+    takenNames.add(nameKey(name));
 
     insertBatch.push({
       id,

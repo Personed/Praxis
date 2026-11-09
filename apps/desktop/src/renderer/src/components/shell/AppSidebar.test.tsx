@@ -96,18 +96,18 @@ describe("AppSidebar", () => {
     const nav = screen.getByRole("navigation");
     fireEvent.mouseEnter(nav);
     const settings = screen.getByRole("button", { name: "Settings" });
-    const account = screen.getByRole("button", { name: "Account" });
-    fireEvent.mouseOut(settings, { relatedTarget: account });
-    fireEvent.mouseOver(account, { relatedTarget: settings });
+    const general = screen.getByRole("button", { name: "General" });
+    fireEvent.mouseOut(settings, { relatedTarget: general });
+    fireEvent.mouseOver(general, { relatedTarget: settings });
 
-    expect(screen.getByRole("button", { name: "Account" })).toBe(account);
-    fireEvent.click(account);
-    expect(account.getAttribute("aria-current")).toBe("page");
-    fireEvent.focus(account);
-    fireEvent.blur(account, {
+    expect(screen.getByRole("button", { name: "General" })).toBe(general);
+    fireEvent.click(general);
+    expect(general.getAttribute("aria-current")).toBe("page");
+    fireEvent.focus(general);
+    fireEvent.blur(general, {
       relatedTarget: screen.getByRole("button", { name: "Settings content" }),
     });
-    expect(screen.getByRole("button", { name: "Account" })).toBe(account);
+    expect(screen.getByRole("button", { name: "General" })).toBe(general);
     fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
     expect(screen.getByRole("button", { name: "Appearance" }).getAttribute("aria-current")).toBe(
       "page",
@@ -116,18 +116,18 @@ describe("AppSidebar", () => {
     fireEvent.mouseLeave(nav, {
       relatedTarget: screen.getByRole("button", { name: "Settings content" }),
     });
-    expect(screen.queryByRole("button", { name: "Account" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "General" })).toBeNull();
   });
 
   it("closes after keyboard focus leaves portal Settings navigation", () => {
     render(<SettingsNavigation />);
     fireEvent.focus(screen.getByRole("button", { name: "Settings" }));
-    const account = screen.getByRole("button", { name: "Account" });
-    fireEvent.focus(account);
-    fireEvent.blur(account, {
+    const general = screen.getByRole("button", { name: "General" });
+    fireEvent.focus(general);
+    fireEvent.blur(general, {
       relatedTarget: screen.getByRole("button", { name: "Settings content" }),
     });
-    expect(screen.queryByRole("button", { name: "Account" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "General" })).toBeNull();
   });
 
   it("is one sidebar: no separate icon rail next to the context list", () => {

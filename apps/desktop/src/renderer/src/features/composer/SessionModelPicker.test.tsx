@@ -28,7 +28,7 @@ const MODELS: ModelInfo[] = [
     thinkingLevels: ["low", "medium", "high"],
   }),
   model("anthropic/sonnet", "Claude Sonnet"),
-  model("modus/locked", "Locked Pro", { provider: "modus", locked: "upgrade" }),
+  model("modus/locked", "Locked Pro", { provider: "modus" }),
 ];
 
 const setModel = vi.fn();
@@ -90,7 +90,13 @@ describe("SessionModelPicker", () => {
     }
   });
 
-  it("hides locked models and changes only this chat", async () => {
+  it("blocks a removed app default until another model is selected", () => {
+    const props = renderPicker({ storedModelId: undefined, defaultModelId: "modus/locked" });
+    expect(trigger().textContent).toContain("Pick a model");
+    expect(props.onBlockedChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it("hides removed provider models and changes only this chat", async () => {
     const user = userEvent.setup();
     const props = renderPicker();
     await user.click(trigger());
