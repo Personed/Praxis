@@ -6,7 +6,7 @@ import {
   configuredModelLimits,
   groupConfiguredModelLimits,
   usageMetricText,
-} from "./SettingsPanel";
+} from "./sections/limits";
 
 const model = (
   overrides: Partial<Omit<ModelInfo, "providerName">> &

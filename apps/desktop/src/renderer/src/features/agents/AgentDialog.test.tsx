@@ -20,7 +20,7 @@ import type {
 } from "../../../../shared/contracts";
 import { AGENT_AVATAR_FACES } from "../../../../shared/contracts";
 import { encodeGroupErrorMessage } from "../../../../shared/group-errors";
-import type { PickableModel } from "../../lib/modusModels";
+import type { PickableModel } from "../../lib/modelPickerModels";
 import { GROUP_ERROR_MESSAGES } from "../groups/groupErrors";
 import { AGENT_GENERATED_HINT, AgentDialog } from "./AgentDialog";
 import { humanizeOption } from "./AvatarOptionGroup";
@@ -180,13 +180,13 @@ describe("agentDialogModel", () => {
 });
 
 describe("AgentDialog", () => {
-  it("groups models by provider and hides a locked Modus model (never a BYOK one)", async () => {
+  it("groups models by provider and omits removed Modus models", async () => {
     const user = userEvent.setup();
     const { dialog } = renderDialog({
       agent: ANA,
       models: [
-        { id: "modus/zai/glm-5-3-flash", name: "GLM-5.3-Flash", provider: "modus" },
-        { id: "modus/anthropic/claude-fable-5-1", name: "Fable", provider: "modus", locked: true },
+        { id: "zai/glm-5-3-flash", name: "GLM-5.3-Flash", provider: "zai", providerName: "Zai" },
+
         { id: "m-1", name: "Model 1", provider: "relay", providerName: "Relay" },
         {
           id: "openrouter/z-ai/glm-5.3-flash",
@@ -199,7 +199,6 @@ describe("AgentDialog", () => {
           name: "BYOK flagged",
           provider: "byok",
           providerName: "Acme",
-          locked: true,
         },
       ],
     });
@@ -207,12 +206,12 @@ describe("AgentDialog", () => {
     const listbox = await openModels(user, dialog);
     const groups = within(listbox).getAllByRole("group");
     expect(groups.map((group) => group.dataset.provider)).toEqual([
-      "modus",
       "byok",
       "openrouter",
       "relay",
+      "zai",
     ]);
-    expect(groups.map(groupLabel)).toEqual(["Modus", "Acme", "OpenRouter", "Relay"]);
+    expect(groups.map(groupLabel)).toEqual(["Acme", "OpenRouter", "Relay", "Zai"]);
     // Sticky group headers use the shared glass strip (solid unless Full transparency), not a
     // solid bg-elevated fill.
     for (const group of groups) {
@@ -227,24 +226,21 @@ describe("AgentDialog", () => {
           .getAllByRole("option")
           .map((o) => o.textContent),
       ),
-    ).toEqual([["GLM-5.3-Flash"], ["BYOK flagged"], ["GLM-5.3-Flash"], ["Model 1"]]);
+    ).toEqual([["BYOK flagged"], ["GLM-5.3-Flash"], ["Model 1"], ["GLM-5.3-Flash"]]);
     expect(within(listbox).queryByRole("option", { name: "Fable" })).toBeNull();
     expect(listbox.textContent).not.toMatch(/\p{Extended_Pictographic}/u);
     // Custom agents get no "App default" entry.
     expect(within(listbox).queryByRole("option", { name: "App default" })).toBeNull();
   });
 
-  it("keeps a saved model that is now locked as '(unavailable)' and saving does not change it", async () => {
+  it("keeps a saved model that is no longer available as '(unavailable)' and saving does not change it", async () => {
     const user = userEvent.setup();
     const { dialog, onUpdate } = renderDialog({
       agent: { ...ANA, modelId: "modus/anthropic/claude-fable-5-1" },
-      models: [
-        ...MODELS,
-        { id: "modus/anthropic/claude-fable-5-1", name: "Fable", provider: "modus", locked: true },
-      ],
+      models: [...MODELS],
     });
     expect(modelTrigger(dialog).dataset.value).toBe("modus/anthropic/claude-fable-5-1");
-    expect(modelTrigger(dialog).textContent).toBe("Fable (unavailable)");
+    expect(modelTrigger(dialog).textContent).toBe("modus/anthropic/claude-fable-5-1 (unavailable)");
     await user.clear(field(dialog, "Instructions"));
     await user.type(field(dialog, "Instructions"), "Review twice.");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
@@ -256,7 +252,7 @@ describe("AgentDialog", () => {
   it("does not preselect a locked Modus default for a new custom agent", () => {
     const { dialog } = renderDialog({
       defaultModelId: "modus/x/locked",
-      models: [...MODELS, { id: "modus/x/locked", name: "Locked", locked: true }],
+      models: [...MODELS, { id: "modus/x/locked", name: "Locked" }],
     });
     expect(modelTrigger(dialog).dataset.value).toBe("");
     expect(modelTrigger(dialog).textContent).toBe("Choose a model");
@@ -585,7 +581,7 @@ describe("AgentDialog model picker", () => {
     { id: "m-1", name: "Model 1", provider: "relay", providerName: "Relay" },
     { id: "m-2", name: "Model 2", provider: "relay", providerName: "Relay" },
     { id: "or/glm", name: "GLM-5.3-Flash", provider: "openrouter", providerName: "OpenRouter" },
-    { id: "modus/zai/glm", name: "GLM Modus", provider: "modus" },
+    { id: "zai/glm", name: "GLM Zai", provider: "zai", providerName: "Zai" },
   ];
 
   it("opens with the keyboard, filters by typing and selects with Enter; Save sends it", async () => {
@@ -623,17 +619,17 @@ describe("AgentDialog model picker", () => {
     const listbox = await openModels(user, dialog);
     const options = within(listbox).getAllByRole("option");
     expect(options.map((o) => o.textContent)).toEqual([
-      "GLM Modus",
       "GLM-5.3-Flash",
       "Model 1",
       "Model 2",
+      "GLM Zai",
     ]);
     const selected = options.filter((o) => o.getAttribute("aria-selected") === "true");
     expect(selected.map((o) => o.textContent)).toEqual(["Model 1"]);
     expect(selected[0]?.querySelector("svg")).not.toBeNull();
     expect(options[0]?.querySelector("svg")).toBeNull();
-    await user.keyboard("{ArrowUp}{ArrowUp}{Enter}");
-    await waitFor(() => expect(modelTrigger(dialog).dataset.value).toBe("modus/zai/glm"));
+    await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
+    await waitFor(() => expect(modelTrigger(dialog).dataset.value).toBe("zai/glm"));
   });
 
   it("search matches provider names and shows an empty state", async () => {
@@ -720,11 +716,11 @@ describe("AgentDialog model picker", () => {
     const highlighted = () => listbox.querySelector("[data-highlighted]")?.textContent;
     await waitFor(() => expect(highlighted()).toBe("Model 1"));
     await user.keyboard("{Home}");
-    expect(highlighted()).toBe("GLM Modus");
+    expect(highlighted()).toBe("GLM-5.3-Flash");
     await user.keyboard("{End}");
-    expect(highlighted()).toBe("Model 2");
-    await user.keyboard("{Home}{Enter}");
-    await waitFor(() => expect(modelTrigger(dialog).dataset.value).toBe("modus/zai/glm"));
+    expect(highlighted()).toBe("GLM Zai");
+    await user.keyboard("{End}{Enter}");
+    await waitFor(() => expect(modelTrigger(dialog).dataset.value).toBe("zai/glm"));
   });
 
   it("Esc with a query closes the picker, keeps the value, returns focus and clears the query", async () => {

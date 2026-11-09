@@ -99,9 +99,6 @@ const afterAllArtifactBuild: NonNullable<Configuration["afterAllArtifactBuild"]>
 const config: Configuration = {
   appId: "dev.modus.desktop",
   productName: "Modus",
-  // modus://auth/callback and modus://billing/return (main/deep-link). Info.plist on macOS,
-  // MimeType x-scheme-handler on Linux; Windows registers at runtime (setAsDefaultProtocolClient).
-  protocols: [{ name: "Modus", schemes: ["modus"] }],
   electronVersion: "44.5.1",
   npmRebuild: false,
   nodeGypRebuild: false,

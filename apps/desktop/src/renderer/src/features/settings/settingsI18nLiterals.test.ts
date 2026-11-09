@@ -23,8 +23,6 @@ const FILES = [
   "features/settings/AskMissingTargetSetting.tsx",
   "features/settings/ToolFilterSetting.tsx",
   "features/settings/LanguageSetting.tsx",
-  "features/settings/sections/account.tsx",
-  "features/settings/sections/account-billing.tsx",
   "features/settings/sections/model-provider.tsx",
   "features/settings/DefaultModelSetting.tsx",
   "features/settings/UnofficialProviderNotice.tsx",

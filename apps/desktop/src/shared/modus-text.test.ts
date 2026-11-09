@@ -21,21 +21,10 @@ describe("Modus catalog parity (en / pt / zh)", () => {
 });
 
 describe("modusText", () => {
-  it("defaults to en without a tag (C6.2) and resolves pt / zh tags", () => {
-    expect(modusText("modus.sessionExpired")).toBe("Your session expired. Please sign in again.");
-    expect(modusText("modus.sessionExpired", "pt-BR")).toBe("Sua sessão expirou, entre de novo.");
-    expect(modusText("modus.status.unavailable", "pt")).toBe("Indisponível");
-    expect(modusText("modus.timeout", "pt-PT")).toBe(
-      "O modelo demorou demais para responder. Alguns créditos podem ter sido usados.",
-    );
-    expect(modusText("modus.timeout")).toBe(
-      "The model took too long to respond. Some credits may have been used.",
-    );
-    expect(modusText("modus.status.unavailable", "fr")).toBe("Unavailable");
-  });
-
-  it("only the 504 copy mentions credits being used", () => {
-    expect(modusText("modus.unavailable")).not.toMatch(/credit/i);
+  it("explains unavailable legacy models in the user's language", () => {
+    expect(modusText("modus.modelNotFound")).toContain("Choose another provider");
+    expect(modusText("modus.modelNotFound", "pt-BR")).toContain("Escolha outro provedor");
+    expect(modusText("modus.modelNotFound", "fr")).toBe(modusText("modus.modelNotFound"));
   });
 });
 

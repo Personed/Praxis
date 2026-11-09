@@ -1,23 +1,9 @@
-import type { ModusModelsStatus } from "../../../shared/contracts";
+/** Provider grouping shared by all model pickers, with unavailable saved values preserved. */
 
-/**
- * Shared model availability and provider grouping for renderer pickers and the "Modus
- * unavailable" notice.
- * - The pickers list models grouped by provider (`buildModelPickerGroups`): the Modus group
- *   first, then one group per user provider, alphabetical by the name Settings › Providers
- *   shows (ModelInfo.providerName).
- * - A locked Modus model (router `/v1/models` `allowed: false`, ModelInfo.locked) is not
- *   listed at all. The main process still rejects it (setDefaultModel, isModelAvailable).
- *   Only `modus/…` ids can be hidden: a BYOK provider's model is always listed.
- * - A saved model that is no longer listed (locked, or its provider went away) stays as a
- *   loose "<name or id> (unavailable)" option, so the saved value never changes silently.
- */
-
-/** Registry ids of the Modus provider are `modus/<provider>/<id>` (main MODUS_PROVIDER_ID). */
+/** Legacy model IDs use `modus/<provider>/<id>`. */
 export const MODUS_MODEL_PREFIX = "modus/";
 
 const MODUS_PROVIDER_ID = "modus";
-const MODUS_GROUP_LABEL = "Modus";
 
 export function isModusModelId(id: string | null | undefined): boolean {
   return typeof id === "string" && id.startsWith(MODUS_MODEL_PREFIX);
@@ -30,11 +16,10 @@ export type PickableModel = {
   provider?: string | undefined;
   /** The provider's name as Settings › Providers shows it (ModelInfo.providerName). */
   providerName?: string | undefined;
-  locked?: boolean | undefined;
 };
 
 export type ModelPickerGroup<M extends PickableModel = PickableModel> = {
-  /** Registry provider id (`modus` for the Modus group), e.g. for ProviderLogo. */
+  /** Registry provider id, e.g. for ProviderLogo. */
   providerId: string;
   label: string;
   models: M[];
@@ -55,9 +40,9 @@ export function isModusModel(model: PickableModel): boolean {
   return model.provider ? model.provider === MODUS_PROVIDER_ID : isModusModelId(model.id);
 }
 
-/** Hidden from the pickers: a locked Modus model. A BYOK model is never hidden. */
+/** The removed account provider must never be offered, including in stale catalogs. */
 export function isHiddenPickerModel(model: PickableModel): boolean {
-  return Boolean(model.locked) && isModusModel(model);
+  return isModusModel(model);
 }
 
 /** The models a picker offers (and that a draft may pick), in the given order. */
@@ -67,15 +52,13 @@ export function selectableModels<M extends PickableModel>(models: readonly M[]):
 
 function providerIdOf(model: PickableModel): string {
   if (model.provider) return model.provider;
-  if (isModusModelId(model.id)) return MODUS_PROVIDER_ID;
   const slash = model.id.indexOf("/");
   return slash > 0 ? model.id.slice(0, slash) : model.id;
 }
 
 /**
- * The picker content: hides locked Modus models, groups the rest by provider (Modus first,
- * then the user's providers alphabetical by display name; empty groups dropped; the given
- * order kept inside a group) and keeps `savedModelId` as a loose "(unavailable)" option
+ * The picker content groups models by provider, alphabetical by display name, with the given
+ * order kept inside a group, and keeps `savedModelId` as a loose "(unavailable)" option
  * when it is not among the listed models. Callers render their own placeholder /
  * "App default" option before `loose`.
  */
@@ -89,18 +72,14 @@ export function buildModelPickerGroups<M extends PickableModel>(
     const providerId = providerIdOf(model);
     let group = byProvider.get(providerId);
     if (!group) {
-      const label =
-        providerId === MODUS_PROVIDER_ID ? MODUS_GROUP_LABEL : model.providerName || providerId;
+      const label = model.providerName || providerId;
       group = { providerId, label, models: [] };
       byProvider.set(providerId, group);
     }
     group.models.push(model);
   }
   const groups = [...byProvider.values()].sort(
-    (a, b) =>
-      Number(b.providerId === MODUS_PROVIDER_ID) - Number(a.providerId === MODUS_PROVIDER_ID) ||
-      a.label.localeCompare(b.label) ||
-      a.providerId.localeCompare(b.providerId),
+    (a, b) => a.label.localeCompare(b.label) || a.providerId.localeCompare(b.providerId),
   );
   const loose: ModelPickerGroups<M>["loose"] = [];
   if (savedModelId && !visible.some((model) => model.id === savedModelId)) {
@@ -137,12 +116,4 @@ export function ModelOptions({
       ))}
     </>
   );
-}
-
-/** The inline "Modus unavailable" notice applies only to a session on a Modus model. */
-export function showsModusUnavailable(
-  status: ModusModelsStatus | undefined,
-  modelIds: readonly (string | null | undefined)[],
-): boolean {
-  return status === "unavailable" && modelIds.some(isModusModelId);
 }

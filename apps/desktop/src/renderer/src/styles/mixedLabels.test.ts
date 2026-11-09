@@ -190,7 +190,6 @@ const FAINT_BUDGET: Record<string, number> = {
   "../features/settings/UnofficialProviderNotice.tsx": 1,
   "../features/settings/form-controls.tsx": 5,
   "../features/settings/sections/SettingsSidebar.tsx": 2,
-  "../features/settings/sections/account.tsx": 0,
   "../features/settings/sections/failure-blacklist.tsx": 0,
   "../features/settings/sections/harness-insights.tsx": 1,
   "../features/settings/sections/integrations.tsx": 9,
