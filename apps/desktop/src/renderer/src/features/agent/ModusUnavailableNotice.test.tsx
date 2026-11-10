@@ -7,11 +7,7 @@ afterEach(() => cleanup());
 
 describe("legacy model availability notice", () => {
   it("shows inline for the legacy model without suggesting account or purchase", () => {
-    render(
-      <ModusUnavailableNotice
-        modelIds={["openai/gpt-x", "modus/deepseek/deepseek-flash"]}
-      />,
-    );
+    render(<ModusUnavailableNotice modelIds={["openai/gpt-x", "modus/deepseek/deepseek-flash"]} />);
     const notice = screen.getByTestId("modus-unavailable-notice");
     expect(notice.getAttribute("role")).toBe("status");
     expect(notice.textContent).toMatch(/model is no longer available/i);
