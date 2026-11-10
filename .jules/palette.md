@@ -29,3 +29,6 @@
 ## 2026-10-31 - Focus-visible token fix
 **Learning:** `ring-focus-ring/35` produces a low-contrast outline that is inaccessible, and violates the rule to use a solid accent color.
 **Action:** Use `ring-focus-ring` (without opacity divisor) for focus rings.
+## 2026-11-05 - [Palette: Add focus-visible style to "Open externally" button in PreviewHost]
+**Learning:** Shared UI custom buttons (like the PreviewHost`s Open externally button) use `outline-none` but lack an explicit `focus-visible` fallback, making keyboard focus invisible.
+**Action:** Add an explicit `focus-visible` ring to custom buttons that suppress their outline to ensure accessibility standards are met and ensure node limits are increased via `NODE_OPTIONS` during memory-intensive test executions.
