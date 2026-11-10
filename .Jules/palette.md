@@ -30,6 +30,9 @@
 ## 2026-11-04 - [Palette: Add focus-visible styles to miscellaneous UI elements]
 **Learning:** Some custom UI elements (like "Open externally" in PreviewHost, `Menu.Trigger`s in DiffPanel, and input fields in BrowserPanel) use `outline-none` but lacked explicit `focus-visible` fallback, making keyboard focus invisible.
 **Action:** Always ensure interactive elements that suppress their default outline have a visible focus ring using `focus-visible:ring-2 focus-visible:ring-focus-ring`.
+## 2026-10-31 - [Palette: Remove low-opacity focus ring from WorkStatusLine toggle]
+**Learning:** Shared global classes using translucent focus rings (e.g., `/35` opacity on `focus-ring`) can violate contrast guidelines (>= 4.5:1). A solid focus ring (`focus-visible:ring-focus-ring`) should be used instead.
+**Action:** Remove opacity modifiers from explicit `focus-visible:ring-focus-ring` classes to ensure solid focus styles and adequate contrast. Pre-existing out-of-scope test failures should be documented and left unfixed.
 ## 2026-11-05 - [Palette: Add focus-visible style to "Open externally" button in PreviewHost]
 **Learning:** Shared UI custom buttons (like the PreviewHost`s Open externally button) use `outline-none` but lack an explicit `focus-visible` fallback, making keyboard focus invisible.
 **Action:** Add an explicit `focus-visible` ring to custom buttons that suppress their outline to ensure accessibility standards are met and ensure node limits are increased via `NODE_OPTIONS` during memory-intensive test executions.
