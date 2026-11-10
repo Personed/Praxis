@@ -86,6 +86,10 @@
 **Learning:** Shared UI custom buttons (like the PreviewHost`s Open externally button) use `outline-none` but lack an explicit `focus-visible` fallback, making keyboard focus invisible.
 **Action:** Add an explicit `focus-visible` ring to custom buttons that suppress their outline to ensure accessibility standards are met and ensure node limits are increased via `NODE_OPTIONS` during memory-intensive test executions.
 
+## 2026-11-04 - [Palette: Add focus-visible styles to miscellaneous UI elements]
+**Learning:** Some custom UI elements (like "Open externally" in PreviewHost, `Menu.Trigger`s in DiffPanel, and input fields in BrowserPanel) use `outline-none` but lacked explicit `focus-visible` fallback, making keyboard focus invisible.
+**Action:** Always ensure interactive elements that suppress their default outline have a visible focus ring using `focus-visible:ring-2 focus-visible:ring-focus-ring`.
+
 ## 2026-10-31 - Focus-visible token fix
 **Learning:** Translucent focus rings can be hard to see.
 **Action:** Use solid focus rings for adequate contrast.
