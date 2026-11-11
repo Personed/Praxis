@@ -40,7 +40,8 @@
       "!.cursor",
       "!MODUS_V0.1.0_EXECUTION_PLAN.md",
       "!reference",
-      "!apps/desktop/resources/skills"
+      "!apps/desktop/resources/skills",
+      "!apps/desktop/src/renderer/public/doom/gzdoom/engine.worker.js"
     ]
   }
 }
