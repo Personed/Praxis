@@ -46,10 +46,7 @@ export function PromptSources({
                       target="_blank"
                       title={source.href}
                     >
-                      <Citation title={source.label} source={source.kind} />
-                      {source.detail ? (
-                        <span className="min-w-0 truncate text-fg-muted">{source.detail}</span>
-                      ) : null}
+                      <SourceLabel source={source} />
                       <span className="shrink-0 text-fg-muted">Open</span>
                     </a>
                   ) : source.path ? (
@@ -59,18 +56,12 @@ export function PromptSources({
                       title={source.path}
                       type="button"
                     >
-                      <Citation title={source.label} source={source.kind} />
-                      {source.detail ? (
-                        <span className="min-w-0 truncate text-fg-muted">{source.detail}</span>
-                      ) : null}
+                      <SourceLabel source={source} />
                       <span className="shrink-0 text-fg-muted">File</span>
                     </button>
                   ) : (
                     <div className="flex min-w-0 items-center justify-between gap-3 rounded-md px-2 py-1.5 text-xs text-fg-muted">
-                      <Citation title={source.label} source={source.kind} />
-                      {source.detail ? (
-                        <span className="min-w-0 truncate text-fg-muted">{source.detail}</span>
-                      ) : null}
+                      <SourceLabel source={source} />
                       <span className="shrink-0 text-fg-muted">Connection</span>
                     </div>
                   )}
@@ -81,5 +72,16 @@ export function PromptSources({
         </Popover.Positioner>
       </Popover.Portal>
     </Popover.Root>
+  );
+}
+
+function SourceLabel({ source }: { source: RunSource }) {
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <Citation title={source.label} source={source.kind} />
+      {source.detail ? (
+        <span className="min-w-0 truncate text-fg-muted">{source.detail}</span>
+      ) : null}
+    </span>
   );
 }

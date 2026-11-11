@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, Reorder, useDragControls, useReducedMotion } from "motion/react";
 import * as React from "react";
+import { motionTransition } from "../../lib/motion";
 
 const buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center rounded-md border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -104,7 +105,7 @@ function QueueRow({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{
-        default: reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 40 },
+        default: motionTransition({ type: "spring", stiffness: 500, damping: 40 }, reducedMotion),
         opacity: { duration: 0.15, ease: [0.23, 1, 0.32, 1] },
       }}
     >

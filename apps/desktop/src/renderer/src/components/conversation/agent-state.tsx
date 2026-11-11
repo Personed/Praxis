@@ -1,11 +1,12 @@
 "use client";
 
 import { X } from "lucide-react";
-import { motion, useInView, useReducedMotion } from "motion/react";
+import { m, useInView, useReducedMotion } from "motion/react";
 import { Dialog } from "radix-ui";
 // Adapted from Agent state by Cojeev (000h), MIT: https://cojeev.com/ui/docs/agent-state/
 import * as React from "react";
 import { cn } from "../../lib/cn";
+import { motionTransition } from "../../lib/motion";
 
 export type AgentStatus = "idle" | "thinking" | "working" | "needs-input" | "complete" | "error";
 export type AgentStateProps = Omit<React.ComponentProps<"div">, "children"> & {
@@ -28,7 +29,7 @@ const statusLabels: Record<AgentStatus, string> = {
   thinking: "Pensando",
   working: "Trabalhando",
   "needs-input": "Aguardando sua resposta",
-  complete: "Concluído",
+  complete: "ConcluÃ­do",
   error: "Com erro",
 };
 
@@ -74,7 +75,7 @@ export function AgentState({
   const morph = active ? { d: [contour, alternate, contour] } : { d: contour };
   const fieldTransition = active
     ? { duration: status === "working" ? 5 : 7, repeat: Infinity, ease: "easeInOut" as const }
-    : { duration: reduceMotion ? 0 : 0.45 };
+    : motionTransition({ duration: 0.45 }, reduceMotion);
 
   return (
     <div
@@ -119,11 +120,11 @@ export function AgentState({
             <stop offset="1" stopColor="var(--agent-deep)" stopOpacity=".8" />
           </linearGradient>
           <clipPath id={`${id}-clip`}>
-            <motion.path initial={false} d={contour} animate={morph} transition={fieldTransition} />
+            <m.path initial={false} d={contour} animate={morph} transition={fieldTransition} />
           </clipPath>
         </defs>
         <ellipse cx="92" cy="139" rx="43" ry="5" fill="var(--agent-deep)" opacity=".12" />
-        <motion.path
+        <m.path
           initial={false}
           d={contour}
           animate={morph}
@@ -131,7 +132,7 @@ export function AgentState({
           fill={`url(#${id}-body)`}
         />
         <g clipPath={`url(#${id}-clip)`}>
-          <motion.g
+          <m.g
             initial={false}
             animate={active ? { rotate: [0, 12, -6, 0], x: [0, 5, -3, 0] } : { rotate: 0, x: 0 }}
             transition={
@@ -166,9 +167,9 @@ export function AgentState({
               strokeOpacity=".25"
               strokeWidth="14"
             />
-          </motion.g>
+          </m.g>
         </g>
-        <motion.path
+        <m.path
           initial={false}
           d={contour}
           animate={morph}
@@ -255,7 +256,7 @@ export function AgentStateDetails({ event }: { event: AgentStateDetailsData | nu
           {(event.activity || event.details) && (
             <Dialog.Description id="agent-dialog-description" className="agent-dialog-description">
               {event.activity}
-              {event.activity && event.details ? " — " : ""}
+              {event.activity && event.details ? " â€” " : ""}
               {event.details}
             </Dialog.Description>
           )}

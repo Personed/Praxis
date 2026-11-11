@@ -24,7 +24,7 @@ import {
 import * as React from "react";
 import { cn } from "../../lib/cn";
 
-/* ═══════════════ Rust constants (transcript.rs:92-166) ═══════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Rust constants (transcript.rs:92-166) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const TOOL_GROUP_HEADER_HEIGHT = 26;
 const TOOL_TREE_ROW_HEIGHT = 32;
 const CHIPS_TOP_PAD = 2;
@@ -43,7 +43,7 @@ const FIRST_ROW_DELAY_MS = 90;
 const SHIMMER_DURATION_MS = 3400;
 const FOLD_CLS = "duration-[140ms] ease-[cubic-bezier(0.23,1,0.32,1)]";
 
-/* ═══════════════ view.rs ports ═══════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• view.rs ports â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 function singleLine(text: string): string {
   return text.split(/\s+/).filter(Boolean).join(" ");
 }
@@ -95,7 +95,7 @@ function nodeToCall(node: TraceNode): any {
   return { kind, name: node.toolName ?? node.primary ?? node.type, path, ...a };
 }
 
-/** view.rs:493 tool_chip_content — label + one-line detail */
+/** view.rs:493 tool_chip_content â€” label + one-line detail */
 function toolChipContent(call: any): [string, string] {
   if (!call) return ["Tool", ""];
   switch (call.kind) {
@@ -179,10 +179,10 @@ function toolGroupSummary(tools: { call: any; is_error: boolean }[]): string {
   if (searches > 0) segments.push(`searched ${plural(searches, "time", "times")}`);
   if (fetches > 0) segments.push(`fetched ${plural(fetches, "page", "pages")}`);
   if (failed > 0) segments.push(`${failed} failed`);
-  return segments.join(" · ");
+  return segments.join(" Â· ");
 }
 
-/** transcript.rs:9031 tool_icon_path → rail-tip glyphs (all muted). */
+/** transcript.rs:9031 tool_icon_path â†’ rail-tip glyphs (all muted). */
 function railIcon(call: any, label: string) {
   const cls = "size-4 shrink-0 text-muted-foreground";
   if (label === "Thought process") return <Brain className={cls} aria-hidden="true" />;
@@ -215,11 +215,11 @@ function railIcon(call: any, label: string) {
   }
 }
 
-/** transcript.rs:9702 activity_rail — trunk + elbow + branch, icon at tip.
+/** transcript.rs:9702 activity_rail â€” trunk + elbow + branch, icon at tip.
  *  ONE SVG owns the whole ribbon (Rust unions the contours into a single
  *  paint for the same reason): mixing CSS hairline divs with SVG strokes
  *  puts adjacent segments on different pixel grids (div box at 12.5 paints
- *  12.5–13.5, a stroke centered on 12.5 paints 12.0–13.0) and every junction
+ *  12.5â€“13.5, a stroke centered on 12.5 paints 12.0â€“13.0) and every junction
  *  shows a half-pixel step. All segments here share one coordinate space. */
 function ActivityRail({
   hasPredecessor,
@@ -230,10 +230,10 @@ function ActivityRail({
   continues: boolean;
   failed: boolean;
 }) {
-  // SOLID colors only — the sandbox's dark `--border` token is itself alpha
+  // SOLID colors only â€” the sandbox's dark `--border` token is itself alpha
   // (oklch(1 0 0 / 10%)), which is what double-blended at the joints. These
   // neutrals are opaque and sit close to each theme's background: light
-  // neutral-300 ≈ the light border token; dark neutral-700 blends into
+  // neutral-300 â‰ˆ the light border token; dark neutral-700 blends into
   // oklch(0.145) without washing out.
   const stroke = failed
     ? "stroke-rose-300 dark:stroke-rose-800"
@@ -247,7 +247,7 @@ function ActivityRail({
       height={TOOL_TREE_ROW_HEIGHT}
       className="pointer-events-none absolute inset-y-0 left-0 h-full flex-none overflow-visible"
     >
-      {/* incoming trunk: every row draws one — the FIRST row extends upward
+      {/* incoming trunk: every row draws one â€” the FIRST row extends upward
           toward the header chevron (just shy of the glyph) so the tree hangs
           from the disclosure instead of starting in mid-air */}
       <line
@@ -266,7 +266,7 @@ function ActivityRail({
         className={stroke}
       />
       {continues && (
-        /* continuation trunk: from the bend (10) — it overlaps the elbow's
+        /* continuation trunk: from the bend (10) â€” it overlaps the elbow's
            vertical start, which is exactly what makes the joint read as one
            continuous line. Safe now that strokes are opaque: same-color
            overlap paints identically, no alpha double-blend. */
@@ -283,13 +283,13 @@ function ActivityRail({
   );
 }
 
-/** transcript.rs:428 thought inline markdown → styled runs (record, not surface).
- *  Small variant — thinking is a trace, not the reply. */
+/** transcript.rs:428 thought inline markdown â†’ styled runs (record, not surface).
+ *  Small variant â€” thinking is a trace, not the reply. */
 function thoughtInline(text: string): React.ReactNode {
   return renderInline(text, true);
 }
 
-/* ═══════════════ Types (public API) ═══════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Types (public API) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export type TraceNodeType =
   | "reasoning"
   | "step"
@@ -335,7 +335,7 @@ export type TraceNode<TArgs = any, TResult = any> = {
   diffRows?: DiffRow[];
   diffFile?: string | undefined;
   codeSnippet?: string | undefined;
-  /** Code the agent READ — rendered as a syntax-highlighted excerpt block
+  /** Code the agent READ â€” rendered as a syntax-highlighted excerpt block
    *  (line numbers start at `lineStart`, 600px scroll cap). */
   code?: string | undefined;
   lineStart?: number | undefined;
@@ -376,19 +376,19 @@ export const DEFAULT_TOOL_REGISTRY: Record<string, ToolDefinition> = {
   task: { name: "task", label: "Agent", icon: Bot },
 };
 
-/* ═══════════════ detail bodies (transcript.rs:9063 detail_body) ═══════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• detail bodies (transcript.rs:9063 detail_body) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 function MoreLinesRow({ count }: { count: number }) {
   return (
     <div
       className="flex items-center text-[12px] text-muted-foreground"
       style={{ height: OUTPUT_LINE_HEIGHT }}
     >
-      … {count} more lines
+      â€¦ {count} more lines
     </div>
   );
 }
 
-/** transcript.rs:9148 ToolDetail::Output — verbatim mono lines, faint */
+/** transcript.rs:9148 ToolDetail::Output â€” verbatim mono lines, faint */
 function OutputDetail({ lines: raw }: { lines: string[] }) {
   const lines = [...raw];
   while (lines.length && !(lines[lines.length - 1] ?? "").trim()) lines.pop();
@@ -403,7 +403,7 @@ function OutputDetail({ lines: raw }: { lines: string[] }) {
           className="whitespace-pre"
           style={{ height: OUTPUT_LINE_HEIGHT, lineHeight: `${OUTPUT_LINE_HEIGHT}px` }}
         >
-          {line || " "}
+          {line || "Â "}
         </div>
       ))}
       {truncatedBy > 0 && <MoreLinesRow count={truncatedBy} />}
@@ -411,7 +411,7 @@ function OutputDetail({ lines: raw }: { lines: string[] }) {
   );
 }
 
-/** transcript.rs:884 call_block — the full invocation (what was asked) */
+/** transcript.rs:884 call_block â€” the full invocation (what was asked) */
 function callBlockLines(node: TraceNode, call: any): string[] {
   const args = (typeof node.args === "object" && node.args ? node.args : {}) as any;
   let text: string;
@@ -453,7 +453,7 @@ function callBlockLines(node: TraceNode, call: any): string[] {
   return text.split("\n").filter((l) => l.length);
 }
 
-/* ═══════════════ exports kept for API compat ═══════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• exports kept for API compat â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export function PixelDotsLoader({ className }: { className?: string }) {
   const delays = Array.from({ length: 9 }, (_, i) => {
     const r = Math.floor(i / 3),
@@ -468,7 +468,7 @@ export function PixelDotsLoader({ className }: { className?: string }) {
       {delays.map((delay, i) => (
         <span
           key={i}
-          className="size-[3px] rounded-full bg-foreground/80 motion-reduce:animate-none"
+          className="size-[3px] rounded-full bg-foreground/80 motion-reduce:animate-pulse"
           style={{
             opacity: 0.2,
             animation: `agent-pixel-on 650ms cubic-bezier(0.23,1,0.32,1) ${delay}ms infinite`,
@@ -479,7 +479,7 @@ export function PixelDotsLoader({ className }: { className?: string }) {
   );
 }
 
-/* ═══════════════ Syntax highlighting (read excerpts) ═══════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Syntax highlighting (read excerpts) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const TOKEN_RE =
   /(\/\/.*$|\/\*[\s\S]*?\*\/|#.*$)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)|\b(const|let|var|function|return|if|else|for|of|in|while|do|break|continue|new|class|extends|implements|interface|type|enum|import|export|from|as|default|async|await|try|catch|finally|throw|switch|case|typeof|instanceof|void|delete|public|private|protected|readonly|static|get|set|super|this|null|undefined|true|false|fn|struct|impl|pub|use|mut|match|def|self|None|Some|Ok|Err)\b|(\b\d+(?:\.\d+)?\b)|(\b[A-Z][A-Za-z0-9_]*\b)|([a-zA-Z_$][\w$]*(?=\s*\())/gm;
 
@@ -492,7 +492,7 @@ const TOKEN_CLS: Record<number, string> = {
   6: "text-blue-600 dark:text-blue-400", // function call
 };
 
-/** Tiny single-pass tokenizer — strings/comments/keywords/numbers/types/calls.
+/** Tiny single-pass tokenizer â€” strings/comments/keywords/numbers/types/calls.
  *  Not a parser: good enough for read excerpts, zero dependencies. */
 export function highlightCode(code: string): React.ReactNode {
   const out: React.ReactNode[] = [];
@@ -631,7 +631,7 @@ export function TerminalCommand({
                 key={i}
                 style={{ height: OUTPUT_LINE_HEIGHT, lineHeight: `${OUTPUT_LINE_HEIGHT}px` }}
               >
-                {l || " "}
+                {l || "Â "}
               </div>
             ))}
             {truncatedBy > 0 && <MoreLinesRow count={truncatedBy} />}
@@ -666,7 +666,7 @@ export function FileDiff({
         <div className="ml-2 flex shrink-0 items-center gap-2">
           <span className="flex gap-1.5 font-semibold tabular-nums">
             {added > 0 && <span className="text-emerald-600 dark:text-emerald-400">+{added}</span>}
-            {removed > 0 && <span className="text-rose-600 dark:text-rose-400">−{removed}</span>}
+            {removed > 0 && <span className="text-rose-600 dark:text-rose-400">âˆ’{removed}</span>}
           </span>
           <button
             type="button"
@@ -751,7 +751,7 @@ export function FileDiff({
                   r.type === "del" && "text-rose-600 dark:text-rose-400",
                 )}
               >
-                {r.type === "add" ? "+" : r.type === "del" ? "−" : ""}
+                {r.type === "add" ? "+" : r.type === "del" ? "âˆ’" : ""}
               </span>
               <code
                 className={cn(
@@ -766,7 +766,7 @@ export function FileDiff({
         )}
         {rows.length > DIFF_DETAIL_MAX_LINES && (
           <div className="px-3 text-muted-foreground">
-            … {rows.length - DIFF_DETAIL_MAX_LINES} more lines
+            â€¦ {rows.length - DIFF_DETAIL_MAX_LINES} more lines
           </div>
         )}
       </div>
@@ -818,15 +818,15 @@ export function StreamingText({
   );
 }
 
-/* ═══════════════ Markdown (crates/ui/src/markdown/render.rs port) ═══════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Markdown (crates/ui/src/markdown/render.rs port) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  * Body 14/22, 12px block gap; frameless hairline code blocks; bold headings;
- * • bullets / 1. numbers; underlined links. Enough grammar for agent prose:
+ * â€¢ bullets / 1. numbers; underlined links. Enough grammar for agent prose:
  * paragraphs, #/##/###, `- ` / `1. ` lists, > quotes, ``` fences. */
 const INLINE_RE = /(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*\n]+\*)|(~~[^~]+~~)|(\[[^\]]+\]\([^)\s]+\))/g;
 
-/** Shared inline formatter — code, bold, italic, strike, links.
+/** Shared inline formatter â€” code, bold, italic, strike, links.
  *  `small` tones it down for the thought body: smaller code chip, softer
- *  bold — so thinking never reads at the same weight as the reply. */
+ *  bold â€” so thinking never reads at the same weight as the reply. */
 function renderInline(text: string, small = false): React.ReactNode[] {
   const out: React.ReactNode[] = [];
   let last = 0;
@@ -964,7 +964,7 @@ function parseBlocks(src: string): MdBlock[] {
   return blocks;
 }
 
-/** Message-body renderer — zeron's markdown metrics (render.rs:31-65). */
+/** Message-body renderer â€” zeron's markdown metrics (render.rs:31-65). */
 export function Markdown({ text, className }: { text: string; className?: string }) {
   const blocks = React.useMemo(() => parseBlocks(text), [text]);
   return (
@@ -1003,7 +1003,7 @@ export function Markdown({ text, className }: { text: string; className?: string
                 {b.items.map((it, j) => (
                   <li key={j} className="flex gap-2">
                     <span aria-hidden="true" className="select-none text-muted-foreground">
-                      •
+                      â€¢
                     </span>
                     <span className="min-w-0">{renderInline(it)}</span>
                   </li>
@@ -1033,7 +1033,7 @@ export function Markdown({ text, className }: { text: string; className?: string
   );
 }
 
-/* ═══════════════ Thought chip (rides the group like any tool) ═══════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Thought chip (rides the group like any tool) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const THOUGHT_MAX_H = 184;
 const THOUGHT_FADE = 18;
 
@@ -1063,7 +1063,7 @@ export function NestedReasoningBlock({
   const onFinishedRef = React.useRef(onFinished);
   onFinishedRef.current = onFinished;
 
-  // Measure the body's real height (ResizeObserver — sentences wrap, fonts
+  // Measure the body's real height (ResizeObserver â€” sentences wrap, fonts
   // load, lines reveal one at a time). Fixed per-sentence math reserved full
   // default height even when the content needed half of it.
   const contentRef = React.useRef<HTMLDivElement>(null);
@@ -1091,7 +1091,7 @@ export function NestedReasoningBlock({
     return () => timers.forEach(clearTimeout);
   }, [isActive, isFinished, delays, sentences]);
 
-  // Live seconds while the thought streams — the duration only becomes the
+  // Live seconds while the thought streams â€” the duration only becomes the
   // settled `durationSeconds` once the thought actually finishes.
   const [liveSecs, setLiveSecs] = React.useState(0);
   React.useEffect(() => {
@@ -1100,20 +1100,20 @@ export function NestedReasoningBlock({
     const t = setInterval(() => setLiveSecs((Date.now() - start) / 1000), 100);
     return () => clearInterval(t);
   }, [isActive, isFinished]);
-  // Freeze at the live elapsed when the thought finishes — never jump
+  // Freeze at the live elapsed when the thought finishes â€” never jump
   // backwards to the prop. `durationSeconds` is only the fallback for
   // thoughts that render already-finished (no live timer ever ran).
   const shownSecs = isFinished ? (liveSecs > 0 ? liveSecs : durationSeconds) : liveSecs;
 
-  // A live thought chip defaults open (transcript.rs:7996); settled → user toggle.
+  // A live thought chip defaults open (transcript.rs:7996); settled â†’ user toggle.
   const open = isFinished ? manualOpen : true;
   const count = isFinished ? sentences.length : revealed;
   const capped = contentH > THOUGHT_MAX_H;
   // Short body: natural height (no reserved slack). Tall body: clamp to the
   // cap; while streaming keep the TAIL visible (the fresh thinking is the
-  // signal — transcript.rs:698), settled + open turns the viewport scrollable.
+  // signal â€” transcript.rs:698), settled + open turns the viewport scrollable.
   const scrollable = isFinished && manualOpen;
-  // On manual open, pin the viewport to the BOTTOM — the tail is where the
+  // On manual open, pin the viewport to the BOTTOM â€” the tail is where the
   // thought ended; opening to the top reads as losing the thread.
   React.useEffect(() => {
     const el = viewportRef.current;
@@ -1144,7 +1144,7 @@ export function NestedReasoningBlock({
       onToggle={() => isFinished && setManualOpen((v) => !v)}
       bodyPadLeft={ACTIVITY_ICON_LEFT + ACTIVITY_ICON_SIZE}
       body={
-        // No rail line — just the indent (padded to the icon's right edge).
+        // No rail line â€” just the indent (padded to the icon's right edge).
         <div className="py-1 pl-3">
           <div
             ref={viewportRef}
@@ -1192,8 +1192,8 @@ export function NestedReasoningBlock({
   );
 }
 
-/* ═══════════════ The rail chip row (tool_chip + expandable card) ═══════════════
- * Chevron + counts sit directly after content — never pushed to the far edge.
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• The rail chip row (tool_chip + expandable card) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ * Chevron + counts sit directly after content â€” never pushed to the far edge.
  */
 function ToolChipRow({
   first,
@@ -1235,7 +1235,7 @@ function ToolChipRow({
    *  Defaults to the content column (gutter + text gap = 56). The thought
    *  chip passes the icon edge (32) so its nested border hangs off the icon. */
   bodyPadLeft?: number | undefined;
-  /** Mono pill after the label — what a Run chip is executing (truncated). */
+  /** Mono pill after the label â€” what a Run chip is executing (truncated). */
   commandPill?: string | undefined;
 }) {
   const failedCls = failed ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground";
@@ -1298,7 +1298,7 @@ function ToolChipRow({
             {labelSuffix && <span className="ml-1.5">{labelSuffix}</span>}
           </span>
           {fileBadgeName ? (
-            /* transcript.rs:9436 — file badge: h22 r5, icon well + basename */
+            /* transcript.rs:9436 â€” file badge: h22 r5, icon well + basename */
             <span className="flex h-[22px] min-w-0 max-w-[55%] shrink items-center gap-1.5 overflow-hidden rounded-[5px] bg-muted/70 pr-1.5 pl-px text-[12px] text-foreground/85 transition-colors group-hover/chip:bg-muted">
               <span className="flex size-5 shrink-0 items-center justify-center rounded-[4px] bg-background">
                 <FileText className="size-3.5 text-muted-foreground" aria-hidden="true" />
@@ -1322,7 +1322,7 @@ function ToolChipRow({
           ) : null}
           {extraTrail}
           {expandable && (
-            /* trailing chevron directly after content — not far-right */
+            /* trailing chevron directly after content â€” not far-right */
             <span className="flex size-[18px] shrink-0 items-center justify-center text-muted-foreground/80 opacity-0 transition-opacity duration-150 group-hover/chip:opacity-100">
               {open ? (
                 <ChevronDown className="size-3" aria-hidden="true" />
@@ -1342,7 +1342,7 @@ function ToolChipRow({
           )}
         >
           <div className="min-h-0 overflow-hidden">
-            {/* Fold lives at row level with positive padding — never a negative
+            {/* Fold lives at row level with positive padding â€” never a negative
               margin (those overhang the clip container and lose their edge). */}
             <div style={{ paddingLeft: bodyPadLeft }}>
               <div className="h-px" />
@@ -1355,7 +1355,7 @@ function ToolChipRow({
   );
 }
 
-/* ═══════════════ TracePillRow — one node → one rail chip ═══════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• TracePillRow â€” one node â†’ one rail chip â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 function TracePillRow({
   node,
   isActive,
@@ -1385,7 +1385,7 @@ function TracePillRow({
   const detailText =
     node.secondary ??
     (isCmd ? undefined : chipDetail || (typeof node.args === "string" ? node.args : undefined));
-  // Run pill: what is being executed — first line only, whitespace-flattened,
+  // Run pill: what is being executed â€” first line only, whitespace-flattened,
   // truncated by the pill. Link/multiline commands collapse to their head.
   const commandPill =
     isCmd && node.command ? singleLine(node.command.split("\n")[0]! ?? "") : undefined;
@@ -1444,7 +1444,7 @@ function TracePillRow({
               <span className="text-emerald-600 dark:text-emerald-400">+{node.add}</span>
             ) : null}
             {node.del ? (
-              <span className="text-rose-600 dark:text-rose-400">−{node.del}</span>
+              <span className="text-rose-600 dark:text-rose-400">âˆ’{node.del}</span>
             ) : null}
           </span>
         ) : undefined
@@ -1459,7 +1459,7 @@ function TracePillRow({
               <CodeBlock code={node.code} lineStart={node.lineStart ?? 1} lang={node.lang} />
             </div>
           )}
-          {/* invocation hidden when a diff or excerpt exists — they carry it */}
+          {/* invocation hidden when a diff or excerpt exists â€” they carry it */}
           {!custom && !node.diffRows && !node.code && invocationLines.length > 0 && !isCmd && (
             <OutputDetail lines={invocationLines} />
           )}
@@ -1531,8 +1531,8 @@ function TracePillRow({
   );
 }
 
-/* ═══════════════ ThinkingState — group header + rail tree ═══════════════
- * Header keeps the work summary before AND after the run — it never swaps
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• ThinkingState â€” group header + rail tree â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ * Header keeps the work summary before AND after the run â€” it never swaps
  * to "Worked for N seconds".
  */
 export interface ThinkingStateProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -1604,7 +1604,7 @@ export const ThinkingState = React.forwardRef<HTMLDivElement, ThinkingStateProps
       if (!isWorking && autoPlay) onSettledRef.current?.();
     }, [isWorking, autoPlay]);
 
-    // Summary covers revealed rows only — never the future. The header reads
+    // Summary covers revealed rows only â€” never the future. The header reads
     // what the turn has actually done so far, matching the rows on screen.
     const revealedCount = Math.min(activeIndex + 1, total);
     const summary = React.useMemo(
@@ -1618,7 +1618,7 @@ export const ThinkingState = React.forwardRef<HTMLDivElement, ThinkingStateProps
       [nodes, revealedCount],
     );
     // While the summary is still empty (a thought, or the first command is
-    // mid-flight) the header says what happened instead of going blank —
+    // mid-flight) the header says what happened instead of going blank â€”
     // both live AND settled.
     const activeType = nodes[Math.min(activeIndex, total - 1)]?.type;
     const hasThought = nodes.some((n) => n.type === "reasoning");
@@ -1627,15 +1627,15 @@ export const ThinkingState = React.forwardRef<HTMLDivElement, ThinkingStateProps
       (summary ||
         (isWorking
           ? activeType === "reasoning"
-            ? "Thinking…"
-            : "Working…"
+            ? "Thinkingâ€¦"
+            : "Workingâ€¦"
           : hasThought
             ? "Thought it through"
             : "Worked"));
     // Open only while work is in flight; settled groups auto-collapse (the
     // 140ms fold) so the streaming reply takes over. A user toggle always
     // wins. (The old `autoPlay === false` clause kept every finished phase
-    // pinned open forever — AgentWorkflow flips autoPlay false on settle.)
+    // pinned open forever â€” AgentWorkflow flips autoPlay false on settle.)
     const expanded = manualExpanded !== null ? manualExpanded : isWorking;
     const hasVisibleContent = nodes.some((node) => node.alwaysVisible);
 
@@ -1653,7 +1653,7 @@ export const ThinkingState = React.forwardRef<HTMLDivElement, ThinkingStateProps
           @keyframes agent-shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
         `}</style>
 
-        {/* ── group header (render_tool_group:8133) ── */}
+        {/* â”€â”€ group header (render_tool_group:8133) â”€â”€ */}
         <button
           type="button"
           aria-expanded={expanded}
@@ -1665,24 +1665,18 @@ export const ThinkingState = React.forwardRef<HTMLDivElement, ThinkingStateProps
           style={{ height: TOOL_GROUP_HEADER_HEIGHT }}
         >
           <span className="relative h-[18px] w-[22px] shrink-0">
-            <ChevronDown
+            <ChevronRight
               aria-hidden="true"
-              className={cn(
-                "absolute size-3.5 text-muted-foreground transition-transform ease-out",
-                FOLD_CLS,
-              )}
-              style={{
-                left: ACTIVITY_TRUNK_X - 7,
-                top: 2,
-                transform: `rotate(${expanded ? 0 : -90}deg)`,
-              }}
+              className={cn("disclosure-chevron absolute size-3.5 text-muted-foreground", FOLD_CLS)}
+              data-open={expanded ? "" : undefined}
+              style={{ left: ACTIVITY_TRUNK_X - 7, top: 2 }}
             />
           </span>
           <span className="min-w-0 truncate">
             {isWorking ? (
               /* tool_group_title shimmer (3.4s sweep) while the group is live */
               <span
-                className="bg-clip-text font-medium text-transparent motion-reduce:animate-none"
+                className="bg-clip-text font-medium text-transparent motion-reduce:animate-pulse"
                 style={{
                   backgroundImage:
                     "linear-gradient(100deg, var(--color-fg-muted) 42%, var(--color-fg) 50%, var(--color-fg-muted) 58%)",
@@ -1693,13 +1687,13 @@ export const ThinkingState = React.forwardRef<HTMLDivElement, ThinkingStateProps
                 {title}
               </span>
             ) : (
-              /* settled: same summary, shimmer off — never swaps to "Worked for" */
+              /* settled: same summary, shimmer off â€” never swaps to "Worked for" */
               <span className="font-normal">{title}</span>
             )}
           </span>
         </button>
 
-        {/* ── collapsible tree (TOOL_FOLD 140ms) ── */}
+        {/* â”€â”€ collapsible tree (TOOL_FOLD 140ms) â”€â”€ */}
         <div
           className={cn(
             "grid transition-[grid-template-rows,opacity] ease-out",
@@ -1762,7 +1756,7 @@ export const ThinkingState = React.forwardRef<HTMLDivElement, ThinkingStateProps
 );
 ThinkingState.displayName = "ThinkingState";
 
-/* ═══════════════ AgentWorkflow (multi-phase) ═══════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• AgentWorkflow (multi-phase) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export function AgentWorkflow({
   phases = [],
   tools,
