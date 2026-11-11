@@ -1335,7 +1335,7 @@ body {
     height: var(--space-native-titlebar);
   }
   .toolbar-icon-button {
-    @apply outline-none focus-visible:ring-2 focus-visible:ring-focus-ring/35;
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-focus-ring;
     color: var(--color-icon-muted);
     width: 26px;
     height: 26px;
@@ -1961,7 +1961,7 @@ body {
     text-align: left;
   }
   .work-status-line__toggle {
-    @apply outline-none focus-visible:ring-2 focus-visible:ring-focus-ring/35;
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-focus-ring;
     border-radius: 6px;
     cursor: pointer;
   }
