@@ -127,11 +127,8 @@ describe("ChatPane message author wiring", () => {
     );
     const view = render(pane(AGENT));
     await waitFor(() => expect(hub.getHistory(SESSION.id)).toHaveLength(3));
-    if (subagent) {
-      await waitFor(() => expect(view.container.textContent).toContain("Thinking"));
-    } else {
-      expect(view.container.textContent).not.toContain("Thinking");
-    }
+    // The trace is part of the transcript for every chat now, not only subagents.
+    await waitFor(() => expect(view.container.textContent).toContain("Thinking"));
     act(() => {
       hub.publish({
         id: "thinking-end",
@@ -153,11 +150,8 @@ describe("ChatPane message author wiring", () => {
         },
       });
     });
-    if (subagent) {
-      await waitFor(() => expect(view.container.textContent).toContain("preview.ts"));
-    } else {
-      expect(view.container.textContent).not.toContain("preview.ts");
-    }
+    // Tool rows stay folded live; the phase label is the visible signal.
+    await waitFor(() => expect(view.container.textContent).toContain("Reading"));
     act(() => {
       hub.publish({
         id: "read-end",

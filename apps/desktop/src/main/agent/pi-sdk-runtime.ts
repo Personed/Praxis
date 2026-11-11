@@ -376,6 +376,7 @@ type SdkRuntimeSession = {
   /** Stable across harmless Pi session-definition rebuilds. */
   reaGeneration: string;
   session: AgentSession;
+  explicitThinkingVariant?: string | undefined;
   profile: ToolProfileName;
   toolRegistryRevision: number;
   unsubscribe: () => void;
@@ -2715,6 +2716,7 @@ export class PiSdkRuntime implements AgentRuntime {
     window: BrowserWindowType,
     sessionId: string,
     requestedModelId?: string | null,
+    requestedThinkingVariant?: string,
   ): Promise<SdkRuntimeSession | undefined> {
     if (this.preflightReservations.get(sessionId) === WORKSPACE_MOVE_RESERVATION) {
       throw new Error("This session is moving to another workspace; retry after it finishes.");
@@ -2786,6 +2788,7 @@ export class PiSdkRuntime implements AgentRuntime {
           previousSelection,
           requestedModelId,
           reaGeneration,
+          requestedThinkingVariant,
         );
       })
       .then((result) => result)
@@ -3640,6 +3643,7 @@ export class PiSdkRuntime implements AgentRuntime {
 
     const metadata: Parameters<typeof updateAgentSessionMetadata>[1] = {
       piSessionId: session.sessionId,
+      thinkingVariant: params.info.thinkingVariant,
     };
     const nextModelId = session.model
       ? modelToId(session.model)
@@ -3656,6 +3660,7 @@ export class PiSdkRuntime implements AgentRuntime {
     updateAgentSessionStatus(params.info.id, "idle");
     runtimeSession = {
       info: updated,
+      explicitThinkingVariant: updated.thinkingVariant,
       reaGeneration:
         params.reaGeneration ?? this.reaGenerations.get(params.info.id) ?? randomUUID(),
       session,
@@ -3718,8 +3723,12 @@ export class PiSdkRuntime implements AgentRuntime {
     if (modelId !== undefined) {
       recordInput.model = modelId;
     }
-    const info = createAgentSessionRecord(recordInput);
-    const selectedThinking = selectedModel ? resolveModelThinking(selectedModel) : undefined;
+    const selectedThinking = resolveModelThinking(selectedModel, input.thinkingVariant);
+    let info = createAgentSessionRecord(recordInput);
+    if (input.thinkingVariant !== undefined) {
+      info =
+        updateAgentSessionMetadata(info.id, { thinkingVariant: selectedThinking.variant }) ?? info;
+    }
     const reaGeneration = randomUUID();
     this.reaGenerations.set(info.id, reaGeneration);
 
@@ -3745,12 +3754,15 @@ export class PiSdkRuntime implements AgentRuntime {
         settingsManager,
         sessionManager: SessionManager.create(input.cwd, sessionDir),
         reaGeneration,
-        model: selectedThinking?.model ?? selectedModel,
-        thinkingLevel: selectedThinking?.thinkingLevel,
-        ...(selectedThinking?.thinkingBudget !== undefined
+        model: selectedThinking.model,
+        thinkingLevel: selectedThinking.thinkingLevel,
+        ...(selectedThinking.thinkingBudget !== undefined
           ? { thinkingBudget: selectedThinking.thinkingBudget }
           : {}),
       });
+      if (input.thinkingVariant !== undefined) {
+        runtimeSession.explicitThinkingVariant = selectedThinking.variant;
+      }
       if (this.reaGenerations.get(info.id) !== reaGeneration) {
         if (this.sessions.get(info.id) === runtimeSession) this.sessions.delete(info.id);
         runtimeSession.unsubscribe();
@@ -3777,6 +3789,7 @@ export class PiSdkRuntime implements AgentRuntime {
     previousSelection?: PreviousSessionSelection,
     requestedModelId?: string | null,
     reaGeneration?: string,
+    requestedThinkingVariant?: string,
   ): Promise<SdkRuntimeSession | undefined> {
     const info = getAgentSession(sessionId);
     if (!info) {
@@ -3839,13 +3852,20 @@ export class PiSdkRuntime implements AgentRuntime {
     const selectedThinking =
       previousSession &&
       previousSelection &&
+      requestedThinkingVariant === undefined &&
       (requestedModelId === undefined || requestedModelId === storedModelId)
         ? {
             model: selectedModel,
             thinkingLevel: previousSelection.thinkingLevel,
             thinkingBudget: previousSelection.thinkingBudget,
           }
-        : resolveModelThinking(selectedModel);
+        : resolveModelThinking(
+            selectedModel,
+            requestedThinkingVariant ??
+              (requestedModelId === undefined || requestedModelId === storedModelId
+                ? info.thinkingVariant
+                : undefined),
+          );
     const { settingsManager, loader, promptLifecycleToken } = await this.createSessionResources(
       info.cwd,
       info.id,
@@ -3854,7 +3874,11 @@ export class PiSdkRuntime implements AgentRuntime {
       previousSession?.session.settingsManager,
     );
     const resumed = await this.assembleSession({
-      info,
+      info:
+        requestedThinkingVariant !== undefined ||
+        (requestedModelId !== undefined && requestedModelId !== storedModelId)
+          ? { ...info, thinkingVariant: requestedThinkingVariant }
+          : info,
       emit,
       emitVolatile,
       agentDir,
@@ -4222,7 +4246,12 @@ export class PiSdkRuntime implements AgentRuntime {
 
     let runtimeSession: SdkRuntimeSession | undefined;
     try {
-      runtimeSession = await this.getOrResume(window, input.sessionId, input.model);
+      runtimeSession = await this.getOrResume(
+        window,
+        input.sessionId,
+        input.model,
+        input.thinkingVariant,
+      );
     } catch (error) {
       throw failEarlyPrompt(error);
     }
@@ -4313,7 +4342,8 @@ export class PiSdkRuntime implements AgentRuntime {
         await this.applyModelSelection(
           runtimeSession,
           turnModelId,
-          input.thinkingVariant ?? input.thinkingLevel,
+          input.thinkingVariant,
+          input.thinkingLevel,
         );
       }
       toolContext.modelId = turnModelId;
@@ -6480,19 +6510,25 @@ export class PiSdkRuntime implements AgentRuntime {
     runtimeSession: SdkRuntimeSession,
     modelId: string,
     thinkingVariant?: string,
+    legacyThinkingLevel?: Parameters<typeof resolveModelThinking>[2],
   ): Promise<ReturnType<typeof findModel>> {
     const model = requireUsableSelectedModel(modelId);
     const sameModel =
       runtimeSession.session.model !== undefined &&
       modelToId(runtimeSession.session.model) === modelId;
-    const preserveThinking = thinkingVariant === undefined && sameModel;
+    const preserveThinking =
+      thinkingVariant === undefined && legacyThinkingLevel === undefined && sameModel;
     const thinkingLevel = preserveThinking ? runtimeSession.session.thinkingLevel : undefined;
     const thinkingBudget = preserveThinking
       ? runtimeSession.session.agent.thinkingBudgets?.high
       : undefined;
+    const explicitVariant =
+      thinkingVariant ?? (preserveThinking ? runtimeSession.explicitThinkingVariant : undefined);
     const resolved = resolveModelThinking(
       model,
-      thinkingVariant ?? getModelThinkingVariant(modelId),
+      explicitVariant ??
+        (legacyThinkingLevel === undefined ? getModelThinkingVariant(modelId) : undefined),
+      legacyThinkingLevel,
     );
     await runtimeSession.session.setModel(resolved.model);
     runtimeSession.session.setThinkingLevel(thinkingLevel ?? resolved.thinkingLevel);
@@ -6500,8 +6536,13 @@ export class PiSdkRuntime implements AgentRuntime {
       runtimeSession.session,
       preserveThinking ? thinkingBudget : resolved.thinkingBudget,
     );
+    runtimeSession.explicitThinkingVariant =
+      explicitVariant === undefined && legacyThinkingLevel === undefined
+        ? undefined
+        : resolved.variant;
     const updated = updateAgentSessionMetadata(runtimeSession.info.id, {
       model: modelToId(model),
+      thinkingVariant: runtimeSession.explicitThinkingVariant,
     });
     if (updated) {
       runtimeSession.info = updated;
@@ -6516,7 +6557,7 @@ export class PiSdkRuntime implements AgentRuntime {
     thinkingVariant?: string,
   ): Promise<AgentSessionInfo> {
     this.assertModelChangeAllowed(sessionId);
-    const runtimeSession = await this.getOrResume(window, sessionId, modelId);
+    const runtimeSession = await this.getOrResume(window, sessionId, modelId, thinkingVariant);
     if (!runtimeSession) {
       throw new Error(`Unable to set model: ${modelId}`);
     }

@@ -16,7 +16,9 @@ import { describe, expect, it } from "vitest";
 const css = readFileSync(new URL("./app.css", import.meta.url), "utf8");
 
 function lightThemeBlock(): string {
-  const start = css.indexOf(':root[data-theme="light"]');
+  // Match the theme block itself, not descendant rules like
+  // `:root[data-theme="light"] .app-sidebar-slot`.
+  const start = css.indexOf(':root[data-theme="light"] {');
   if (start === -1) {
     throw new Error("light theme block not found");
   }

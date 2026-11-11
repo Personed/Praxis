@@ -84,7 +84,7 @@ import {
 } from "./subagentUi";
 import { buildVisibleTimelineBlocks, pinnedTodosForRail, Timeline } from "./Timeline";
 import { TodosCard } from "./TodosCard";
-import { splitTimelinePresentation } from "./timelinePresentation";
+
 import { useAutoScroll } from "./useAutoScroll";
 import { WorkingSubagentBar } from "./WorkingSubagentBar";
 
@@ -842,7 +842,7 @@ export function ChatPane({
       }
       autoScrollResumeRef.current();
     };
-    // WorkStatusLine / WorkFold layout settles across a couple frames; without
+    // Execution activity layout settles across a couple frames; without
     // retries an idle remount stays at scrollTop 0 (session start).
     requestAnimationFrame(() => {
       apply();
@@ -872,10 +872,6 @@ export function ChatPane({
   const visibleBlocks = useMemo(
     () => buildVisibleTimelineBlocks(agentEvents, completeRunSources),
     [agentEvents, completeRunSources],
-  );
-  const transcriptBlocks = useMemo(
-    () => splitTimelinePresentation(visibleBlocks).transcriptBlocks,
-    [visibleBlocks],
   );
 
   // The latest plan written/updated in this session. Keep the inspector's data
@@ -1372,7 +1368,7 @@ export function ChatPane({
 
       <div className="relative flex min-h-0 min-w-0 flex-1">
         {isLite ? null : (
-          <ConversationTimeline blocks={transcriptBlocks} scrollContainer={scrollContainer} />
+          <ConversationTimeline blocks={visibleBlocks} scrollContainer={scrollContainer} />
         )}
         <ChatViewport
           contentRef={autoScroll.contentRef}
@@ -1399,9 +1395,7 @@ export function ChatPane({
           <Timeline
             assistantAgent={assistantAgent}
             assistantAgentId={session.agentId}
-            // Subagent previews/details have no separate Activity tab. Render
-            // their existing live work projection as well as the final answer.
-            blocks={session.parentSessionId ? visibleBlocks : transcriptBlocks}
+            blocks={visibleBlocks}
             cwd={activeCwd}
             {...(isLite ? { embedded: true } : {})}
             model={paneModel}
@@ -1587,6 +1581,7 @@ export function ChatPane({
                               onError={setPromptError}
                               sessionId={sessionId}
                               storedModelId={session.model || undefined}
+                              storedThinkingVariant={session.thinkingVariant}
                             />
                             <SessionBranchPicker
                               cwd={activeCwd}

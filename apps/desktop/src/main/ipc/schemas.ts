@@ -52,6 +52,7 @@ export const agentCreateSchema = z.object({
   cwd: nonEmptyString,
   title: nonEmptyString,
   model: optionalNonEmptyString,
+  thinkingVariant: optionalNonEmptyString,
 });
 
 export const workspacePinSchema = z.object({

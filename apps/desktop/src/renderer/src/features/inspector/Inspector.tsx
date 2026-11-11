@@ -1,6 +1,7 @@
-import { Tabs } from "@base-ui/react/tabs";
+import { Menu } from "@base-ui/react/menu";
 import {
-  IconActivity,
+  IconCheck,
+  IconChevronDown,
   IconFileText,
   IconGitBranch,
   IconGridDots,
@@ -10,8 +11,17 @@ import {
   IconTerminal2,
   IconWorld,
 } from "@tabler/icons-react";
-import { m, useMotionValue, useReducedMotion } from "motion/react";
-import { lazy, type PointerEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { m, useMotionValue, useReducedMotion, useTransform } from "motion/react";
+import {
+  lazy,
+  type PointerEvent,
+  type ReactNode,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { SecurityState } from "../../../../preload/types";
 import type {
   AgentInfo,
@@ -26,7 +36,6 @@ import { ContentTransition } from "../../components/ui/ContentTransition";
 import { ModusLoadingFallback } from "../../components/ui/ModusLoadingMark";
 import { PanelHeader } from "../../components/ui/Panel";
 import { TOOLBAR_ICON } from "../../components/ui/ToolbarButton";
-import { Tooltip } from "../../components/ui/Tooltip";
 import { cn } from "../../lib/cn";
 import {
   animatePanelWidth,
@@ -36,7 +45,6 @@ import {
   tween,
 } from "../../lib/motion";
 import { beginResizeGesture, endResizeGesture } from "../../lib/resizeGesture";
-import { ActivityTimeline } from "../agent/ActivityTimeline";
 import type { AgentEventHub } from "../agent/agentEventHub";
 import { DiffPanel } from "../diff/DiffPanel";
 import { FilesPanel } from "../files/FilesPanel";
@@ -107,48 +115,107 @@ const TerminalPanel = lazy(() =>
   })),
 );
 
-const TABS = [
+const TOOL_GROUPS = [
   {
-    value: "activity",
-    label: "Activity",
-    icon: <IconActivity size={TOOLBAR_ICON.size} stroke={TOOLBAR_ICON.stroke} />,
+    label: "Workspace",
+    tools: [
+      { value: "changes", label: "Changes", Icon: IconGitBranch },
+      { value: "plan", label: "Plan", Icon: IconLayoutList },
+      { value: "files", label: "Files", Icon: IconFileText },
+      { value: "subagents", label: "Subagents", Icon: IconGridDots },
+    ],
   },
   {
-    value: "changes",
-    label: "Changes",
-    icon: <IconGitBranch size={TOOLBAR_ICON.size} stroke={TOOLBAR_ICON.stroke} />,
+    label: "Tools",
+    tools: [
+      { value: "browser", label: "Browser", Icon: IconWorld },
+      { value: "terminal", label: "Terminal", Icon: IconTerminal2 },
+      { value: "security", label: "Security", Icon: IconShieldCheck },
+    ],
   },
-  {
-    value: "plan",
-    label: "Plan",
-    icon: <IconLayoutList size={TOOLBAR_ICON.size} stroke={TOOLBAR_ICON.stroke} />,
-  },
-  {
-    value: "files",
-    label: "Files",
-    icon: <IconFileText size={TOOLBAR_ICON.size} stroke={TOOLBAR_ICON.stroke} />,
-  },
-  {
-    value: "subagents",
-    label: "Subagents",
-    icon: <IconGridDots size={TOOLBAR_ICON.size} stroke={TOOLBAR_ICON.stroke} />,
-  },
-  {
-    value: "browser",
-    label: "Browser",
-    icon: <IconWorld size={TOOLBAR_ICON.size} stroke={TOOLBAR_ICON.stroke} />,
-  },
-  {
-    value: "terminal",
-    label: "Terminal",
-    icon: <IconTerminal2 size={TOOLBAR_ICON.size} stroke={TOOLBAR_ICON.stroke} />,
-  },
-  {
-    value: "security",
-    label: "Security",
-    icon: <IconShieldCheck size={TOOLBAR_ICON.size} stroke={TOOLBAR_ICON.stroke} />,
-  },
-];
+] as const;
+
+const INSPECTOR_TOOLS = TOOL_GROUPS.flatMap((group) => [...group.tools]);
+type InspectorTool = (typeof INSPECTOR_TOOLS)[number];
+
+function InspectorToolbar({
+  tool,
+  onSelect,
+}: {
+  tool: InspectorTool;
+  onSelect(value: string): void;
+}) {
+  const { Icon } = tool;
+  return (
+    <div className="toolbar-row flex shrink-0 items-center border-b border-hairline bg-transparent px-2">
+      <Menu.Root modal={false}>
+        <Menu.Trigger
+          className="inspector-tool-trigger"
+          aria-label={`Inspector tool: ${tool.label}`}
+        >
+          <Icon aria-hidden="true" size={TOOLBAR_ICON.size} stroke={TOOLBAR_ICON.stroke} />
+          <span>{tool.label}</span>
+          <IconChevronDown aria-hidden="true" size={12} stroke={1.8} />
+        </Menu.Trigger>
+        <Menu.Portal>
+          <Menu.Positioner align="start" side="bottom" sideOffset={4} className="z-50">
+            <Menu.Popup className="inspector-tool-menu" aria-label="Inspector tools">
+              <Menu.RadioGroup value={tool.value} onValueChange={onSelect}>
+                {TOOL_GROUPS.map(({ label, tools }) => (
+                  <Menu.Group className="inspector-tool-group" key={label}>
+                    <Menu.GroupLabel className="inspector-tool-group-label">
+                      {label}
+                    </Menu.GroupLabel>
+                    {tools.map(({ Icon: ToolIcon, label: toolLabel, value }) => (
+                      <Menu.RadioItem
+                        className="inspector-tool-option"
+                        closeOnClick
+                        key={value}
+                        label={toolLabel}
+                        value={value}
+                      >
+                        <ToolIcon aria-hidden="true" size={15} stroke={1.7} />
+                        <span className="flex-1">{toolLabel}</span>
+                        <Menu.RadioItemIndicator>
+                          <IconCheck aria-hidden="true" size={15} stroke={2} />
+                        </Menu.RadioItemIndicator>
+                      </Menu.RadioItem>
+                    ))}
+                  </Menu.Group>
+                ))}
+              </Menu.RadioGroup>
+            </Menu.Popup>
+          </Menu.Positioner>
+        </Menu.Portal>
+      </Menu.Root>
+    </div>
+  );
+}
+
+function InspectorPanel({
+  active,
+  children,
+  label,
+  keepMounted = false,
+  className,
+}: {
+  active: boolean;
+  children: ReactNode;
+  label: string;
+  keepMounted?: boolean;
+  className?: string;
+}) {
+  if (!active && !keepMounted) return null;
+  return (
+    <section
+      aria-label={label}
+      className={cn(INSPECTOR_TAB_PANEL_CLASS, className)}
+      hidden={!active}
+    >
+      {children}
+    </section>
+  );
+}
 
 export function Inspector({
   assistantAgent,
@@ -193,7 +260,10 @@ export function Inspector({
   const resizeHandleRef = useRef<HTMLButtonElement | null>(null);
   const [contentVisible, setContentVisible] = useState(open);
   const [internalTab, setInternalTab] = useState("changes");
-  const tab = controlledTab ?? internalTab;
+  const tool =
+    INSPECTOR_TOOLS.find(({ value }) => value === (controlledTab ?? internalTab)) ??
+    TOOL_GROUPS[0].tools[0];
+  const tab = tool.value;
   const [browserVisited, setBrowserVisited] = useState(tab === "browser");
   const [terminalVisited, setTerminalVisited] = useState(tab === "terminal");
   const shouldRenderBrowser = browserVisited || tab === "browser";
@@ -208,7 +278,9 @@ export function Inspector({
   // writes straight to the DOM (batched to a frame) WITHOUT re-rendering App and
   // its heavy Timeline on every pointermove. open/close still animates smoothly;
   // the drag tracks the cursor 1:1 with no layout-property tween fighting it.
-  const panelWidth = useMotionValue(open ? width : INSPECTOR_COLLAPSED_WIDTH);
+  const panelWidth = useMotionValue(INSPECTOR_COLLAPSED_WIDTH);
+  // A zero-width flex item would still leave the workspace gap and panel border.
+  const panelDisplay = useTransform(panelWidth, (value) => (value > 0 ? "flex" : "none"));
   // Starts transparent: the content fades in once the first open settles, as it
   // did when it mounted with `initial={{ opacity: 0 }}`.
   const contentOpacity = useMotionValue(0);
@@ -323,9 +395,10 @@ export function Inspector({
 
   return (
     <m.aside
-      className="surface-sidebar relative flex min-w-0 shrink-0 flex-col overflow-hidden rounded-b-lg border border-hairline-strong border-t-0"
+      aria-label="Right panel"
+      className="inspector-surface relative flex min-w-0 shrink-0 flex-col overflow-hidden rounded-b-lg border border-hairline-strong border-t-0"
       data-ui-surface="sidebar"
-      style={{ width: panelWidth }}
+      style={{ width: panelWidth, display: panelDisplay }}
     >
       {open ? (
         <>
@@ -346,135 +419,87 @@ export function Inspector({
               data-panel-content=""
               style={{ width: panelWidth, opacity: contentOpacity }}
             >
-              <Tabs.Root
-                className="flex min-h-0 flex-1 flex-col"
-                onValueChange={(value) => setTab(value as string)}
-                value={tab}
-              >
-                <div className="toolbar-row flex shrink-0 items-center bg-transparent px-2">
-                  <Tabs.List className="relative flex min-w-0 flex-1 items-center gap-0.5">
-                    {TABS.map((tab) => (
-                      <Tooltip content={tab.label} key={tab.value} side="bottom" sideOffset={6}>
-                        <Tabs.Tab
-                          aria-label={tab.label}
-                          className={cn(
-                            "toolbar-icon-button relative z-10 flex focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-3 focus-visible:outline-accent focus-visible:ring-0 items-center justify-center rounded-md text-sm font-normal transition-colors hover:bg-hover data-selected:text-[var(--color-icon)]",
-                          )}
-                          value={tab.value}
-                        >
-                          {tab.icon}
-                        </Tabs.Tab>
-                      </Tooltip>
-                    ))}
-                    <Tabs.Indicator className="absolute top-1/2 left-0 z-0 h-6.5 w-(--active-tab-width) -translate-y-1/2 translate-x-(--active-tab-left) rounded-md bg-active transition-all duration-(--motion-duration-slow) ease-standard" />
-                  </Tabs.List>
-                </div>
-
-                <Tabs.Panel className={INSPECTOR_TAB_PANEL_CLASS} value="activity">
-                  <ContentTransition
-                    className="flex min-h-0 flex-1 flex-col"
-                    transitionKey="activity"
-                  >
-                    <ActivityTimeline
-                      assistantAgent={assistantAgent}
-                      assistantAgentId={assistantAgentId}
-                      cwd={cwd}
-                      hub={hub}
-                      key={sessionId ?? "none"}
-                      onOpenSubagent={onOpenSubagent}
-                      sessionId={sessionId}
-                      {...(onOpenFile ? { onOpenFile } : {})}
-                      {...(onOpenPlan ? { onOpenPlan } : {})}
-                    />
-                  </ContentTransition>
-                </Tabs.Panel>
-                <Tabs.Panel className={INSPECTOR_TAB_PANEL_CLASS} value="changes">
-                  <ContentTransition
-                    className="flex min-h-0 flex-1 flex-col"
-                    transitionKey="changes"
-                  >
-                    <DiffPanel cwd={cwd} sessionId={sessionId} workspaceId={activeWorkspace?.id} />
-                  </ContentTransition>
-                </Tabs.Panel>
-                <Tabs.Panel className={INSPECTOR_TAB_PANEL_CLASS} value="plan">
-                  <ContentTransition className="flex min-h-0 flex-1 flex-col" transitionKey="plan">
-                    <PlanPanel
-                      active={open && tab === "plan"}
-                      sessionCwd={sessionCwd}
-                      plan={plan}
-                    />
-                  </ContentTransition>
-                </Tabs.Panel>
-                <Tabs.Panel className={INSPECTOR_TAB_PANEL_CLASS} value="files">
-                  <ContentTransition className="flex min-h-0 flex-1 flex-col" transitionKey="files">
-                    <FilesPanel
-                      cwd={cwd}
-                      onAddToChat={onAddToChat}
-                      onRevealConsumed={onRevealConsumed}
-                      revealLine={revealLine}
-                      revealPath={revealPath}
-                    />
-                  </ContentTransition>
-                </Tabs.Panel>
-                <Tabs.Panel className={INSPECTOR_TAB_PANEL_CLASS} value="subagents">
-                  <ContentTransition
-                    className="flex min-h-0 flex-1 flex-col"
-                    transitionKey="subagents"
-                  >
-                    <SubagentsPanel
-                      contextUsageBySession={contextUsageBySession}
-                      defaultModel={defaultModel}
-                      hub={hub}
-                      models={models}
-                      onModelChange={onModelChange}
-                      onModelConfigChange={onModelConfigChange}
-                      onOpenReview={onOpenReview}
-                      onOpenPlan={(nextPlan) => {
-                        onPlanUpdated(nextPlan);
-                        onTabChange?.("plan");
-                      }}
-                      onOpenSubagent={onOpenSubagent}
-                      onPlanUpdated={onPlanUpdated}
-                      onSelect={onSelectSubagent}
-                      onSessionsChanged={onSessionsChanged}
-                      parentSessionId={sessionId}
-                      selectedId={selectedSubagentId}
-                      sessions={sessions}
-                      workspace={activeWorkspace}
-                    />
-                  </ContentTransition>
-                </Tabs.Panel>
-                <Tabs.Panel className={INSPECTOR_TAB_PANEL_CLASS} keepMounted value="browser">
-                  {shouldRenderBrowser ? (
-                    <Suspense fallback={<ModusLoadingFallback />}>
-                      <BrowserPanel active={tab === "browser"} workspaceId={activeWorkspace?.id} />
-                    </Suspense>
-                  ) : null}
-                </Tabs.Panel>
-                <Tabs.Panel className={INSPECTOR_TAB_PANEL_CLASS} keepMounted value="terminal">
-                  {shouldRenderTerminal ? (
-                    <Suspense fallback={<ModusLoadingFallback />}>
-                      <TerminalPanel
-                        active={tab === "terminal"}
-                        key={activeWorkspace?.id ?? "none"}
-                        {...(cwd ? { cwd } : {})}
-                        {...(onRevealTerminalConsumed ? { onRevealTerminalConsumed } : {})}
-                        {...(revealTerminalId ? { revealTerminalId } : {})}
-                        {...(sessionId ? { sessionId } : {})}
-                        {...(activeWorkspace?.id ? { workspaceId: activeWorkspace.id } : {})}
-                      />
-                    </Suspense>
-                  ) : null}
-                </Tabs.Panel>
-                <Tabs.Panel
-                  className={`${INSPECTOR_TAB_PANEL_CLASS} scroll-thin overflow-y-auto`}
-                  value="security"
+              <InspectorToolbar tool={tool} onSelect={setTab} />
+              <InspectorPanel active={tab === "changes"} label="Changes">
+                <ContentTransition className="flex min-h-0 flex-1 flex-col" transitionKey="changes">
+                  <DiffPanel cwd={cwd} sessionId={sessionId} workspaceId={activeWorkspace?.id} />
+                </ContentTransition>
+              </InspectorPanel>
+              <InspectorPanel active={tab === "plan"} label="Plan">
+                <ContentTransition className="flex min-h-0 flex-1 flex-col" transitionKey="plan">
+                  <PlanPanel active={open && tab === "plan"} sessionCwd={sessionCwd} plan={plan} />
+                </ContentTransition>
+              </InspectorPanel>
+              <InspectorPanel active={tab === "files"} label="Files">
+                <ContentTransition className="flex min-h-0 flex-1 flex-col" transitionKey="files">
+                  <FilesPanel
+                    cwd={cwd}
+                    onAddToChat={onAddToChat}
+                    onRevealConsumed={onRevealConsumed}
+                    revealLine={revealLine}
+                    revealPath={revealPath}
+                  />
+                </ContentTransition>
+              </InspectorPanel>
+              <InspectorPanel active={tab === "subagents"} label="Subagents">
+                <ContentTransition
+                  className="flex min-h-0 flex-1 flex-col"
+                  transitionKey="subagents"
                 >
-                  <ContentTransition transitionKey="security">
-                    <SecurityPanel securityState={securityState} />
-                  </ContentTransition>
-                </Tabs.Panel>
-              </Tabs.Root>
+                  <SubagentsPanel
+                    contextUsageBySession={contextUsageBySession}
+                    defaultModel={defaultModel}
+                    hub={hub}
+                    models={models}
+                    onModelChange={onModelChange}
+                    onModelConfigChange={onModelConfigChange}
+                    onOpenReview={onOpenReview}
+                    onOpenPlan={(nextPlan) => {
+                      onPlanUpdated(nextPlan);
+                      onTabChange?.("plan");
+                    }}
+                    onOpenSubagent={onOpenSubagent}
+                    onPlanUpdated={onPlanUpdated}
+                    onSelect={onSelectSubagent}
+                    onSessionsChanged={onSessionsChanged}
+                    parentSessionId={sessionId}
+                    selectedId={selectedSubagentId}
+                    sessions={sessions}
+                    workspace={activeWorkspace}
+                  />
+                </ContentTransition>
+              </InspectorPanel>
+              <InspectorPanel active={tab === "browser"} label="Browser" keepMounted>
+                {shouldRenderBrowser ? (
+                  <Suspense fallback={<ModusLoadingFallback />}>
+                    <BrowserPanel active={tab === "browser"} workspaceId={activeWorkspace?.id} />
+                  </Suspense>
+                ) : null}
+              </InspectorPanel>
+              <InspectorPanel active={tab === "terminal"} label="Terminal" keepMounted>
+                {shouldRenderTerminal ? (
+                  <Suspense fallback={<ModusLoadingFallback />}>
+                    <TerminalPanel
+                      active={tab === "terminal"}
+                      key={activeWorkspace?.id ?? "none"}
+                      {...(cwd ? { cwd } : {})}
+                      {...(onRevealTerminalConsumed ? { onRevealTerminalConsumed } : {})}
+                      {...(revealTerminalId ? { revealTerminalId } : {})}
+                      {...(sessionId ? { sessionId } : {})}
+                      {...(activeWorkspace?.id ? { workspaceId: activeWorkspace.id } : {})}
+                    />
+                  </Suspense>
+                ) : null}
+              </InspectorPanel>
+              <InspectorPanel
+                active={tab === "security"}
+                className="scroll-thin overflow-y-auto"
+                label="Security"
+              >
+                <ContentTransition transitionKey="security">
+                  <SecurityPanel securityState={securityState} />
+                </ContentTransition>
+              </InspectorPanel>
             </m.div>
           ) : null}
         </>

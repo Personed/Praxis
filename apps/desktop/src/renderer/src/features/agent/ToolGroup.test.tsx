@@ -85,7 +85,7 @@ describe("work activity group (ActivityGroup + ToolGroup)", () => {
     expect(workActivityStreamCounts([tool("1", "bash", { command: "ls" })])).toBe("");
   });
 
-  it("renders a streaming group collapsed with counts, nested tools via ToolCard", () => {
+  it("renders a streaming group as a live execution trace", () => {
     const run: RunBlockItem = {
       id: "run",
       type: "run",
@@ -101,15 +101,13 @@ describe("work activity group (ActivityGroup + ToolGroup)", () => {
       },
     ];
     render(<WorkFold items={items} run={run} />);
-    const group = screen.getByRole("button", { name: /Searching x/ });
-    expect(group.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.getByText("1 file, 1 search")).toBeTruthy();
-    fireEvent.click(group);
-    expect(group.getAttribute("aria-expanded")).toBe("true");
-    expect(screen.getByText("Searching…")).toBeTruthy();
+    const header = screen.getByRole("button", { name: /Working/ });
+    expect(header.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("button", { name: /read read/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /grep grep/ })).toBeTruthy();
   });
 
-  it("settled group shows the summary label and no streaming detail", () => {
+  it("settles the trace collapsed and lets the user reopen it", () => {
     const run: RunBlockItem = {
       id: "run",
       type: "run",
@@ -126,10 +124,10 @@ describe("work activity group (ActivityGroup + ToolGroup)", () => {
       },
     ];
     render(<WorkFold items={items} run={run} />);
-    fireEvent.click(screen.getByRole("button", { name: "Expand work" }));
-    const group = screen.getByRole("button", { name: /Read 2 files/ });
-    expect(document.querySelector("[data-tool-group-detail]")).toBeNull();
-    expect(group.getAttribute("aria-expanded")).toBe("false");
+    const header = screen.getByRole("button", { name: /Worked/ });
+    expect(header.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(header);
+    expect(header.getAttribute("aria-expanded")).toBe("true");
   });
 
   it("WorkActivityRow still renders non-search tools through ToolCard", () => {

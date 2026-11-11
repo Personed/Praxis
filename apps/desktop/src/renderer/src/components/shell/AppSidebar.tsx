@@ -94,7 +94,10 @@ export function AppSidebar({
       style={{ width: appSidebarReservedWidth(pinned) }}
     >
       <NavRail
-        className={cn("justify-between gap-3 px-2 pb-2", trafficLightClearance ? "pt-10" : "pt-3")}
+        className={cn(
+          "app-sidebar-rail justify-between gap-3 px-2 pb-2",
+          trafficLightClearance ? "pt-10" : "pt-3",
+        )}
         compactMenuLabel={t("shell.menu")}
         label="Primary navigation"
         pinned={pinned}
@@ -105,7 +108,7 @@ export function AppSidebar({
             onPinnedChange={onPinnedChange}
             pinLabel={pinned ? t("shell.unpinSidebar") : t("shell.pinSidebar")}
           />
-          <div className="mt-4 flex flex-col gap-0.5">
+          <div className="app-sidebar-primary mt-4 flex flex-col gap-1">
             <NavRailItem
               disabled={!canCreateSession}
               icon={<IconEdit size={ICON.rail} stroke={ICON_STROKE.rail} />}
@@ -123,7 +126,7 @@ export function AppSidebar({
           <ExpandedOnly>{beforeProjects}</ExpandedOnly>
           <ContextList>{children}</ContextList>
         </div>
-        <div className="flex flex-col gap-0.5 pt-2">
+        <div className="app-sidebar-footer flex flex-col gap-1 pt-2">
           <NavRailItem
             current={active === "automations"}
             icon={<IconClock size={ICON.rail} stroke={ICON_STROKE.rail} />}
@@ -153,24 +156,23 @@ function Brand({
 }) {
   const { expanded, compact, motion } = useNavRail();
   return (
-    <div className="flex h-8 items-center gap-2 pl-[6px]" data-testid="app-rail-brand">
+    <div className="flex h-8 shrink-0 items-center gap-2 pl-[6px]" data-testid="app-rail-brand">
       <ModusBot className="size-7 shrink-0" motionScale={0.25} />
       {expanded ? (
         <>
-          {/* Mounts only while expanded, so it needs its own entrance (`appear`). */}
           <NavRailReveal
             appear
-            className="min-w-0 flex-1 truncate text-sm font-medium text-fg"
+            className="min-w-0 truncate text-sm font-semibold text-fg"
             motion={motion}
             visible
           >
             Modus
           </NavRailReveal>
-          {compact ? null : (
+          {!compact ? (
             <button
               aria-label={pinLabel}
               aria-pressed={pinned}
-              className="nav-rail-icon-button outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              className="nav-rail-icon-button sidebar-pin-button shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               onClick={() => onPinnedChange(!pinned)}
               title={pinLabel}
               type="button"
@@ -181,7 +183,7 @@ function Brand({
                 <IconPin aria-hidden size={ICON.sm} stroke={ICON_STROKE.sm} />
               )}
             </button>
-          )}
+          ) : null}
         </>
       ) : null}
     </div>
@@ -200,7 +202,7 @@ function ContextList({ children }: { children?: ReactNode }) {
   return (
     <m.div
       animate={{ opacity: 1 }}
-      className="mt-3 flex min-h-0 flex-1 flex-col pt-2"
+      className="mt-1 flex min-h-0 flex-1 flex-col"
       data-shell-layer="context-sidebar"
       data-testid="context-sidebar"
       initial={{ opacity: 0 }}

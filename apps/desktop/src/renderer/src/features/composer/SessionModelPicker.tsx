@@ -1,7 +1,7 @@
 import { Menu } from "@base-ui/react/menu";
 import { IconCheck, IconChevronDown } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
-import type { ModelInfo } from "../../../../shared/contracts";
+import type { ModelInfo, ThinkingOption } from "../../../../shared/contracts";
 import { cn } from "../../lib/cn";
 import {
   isHiddenPickerModel,
@@ -17,6 +17,7 @@ type SessionModelPickerProps = {
   sessionId: string;
   /** The model saved on the session; undefined = the chat follows the app default. */
   storedModelId: string | undefined;
+  storedThinkingVariant?: string | undefined;
   defaultModelId: string;
   models: ModelInfo[];
   /** False while the catalog loads: an empty list then means "unknown", never "unusable". */
@@ -56,12 +57,12 @@ function pickableModels(models: readonly ModelInfo[]): PickableModel[] {
  * The effort chip appears only when the model has more than one thinking option.
  * Choosing an effort calls `setModel` with the effective model, so it also PINS that model
  * on the chat (a chat on "Default (X)" stops following the default). The level lives on the
- * chat's runtime session; the chip shows the last pick until the pane remounts, then the
- * model's configured level.
+ * persisted session record, including after remounts, rebuilds and resume.
  */
 export function SessionModelPicker({
   sessionId,
   storedModelId,
+  storedThinkingVariant,
   defaultModelId,
   models,
   modelsReady,
@@ -76,17 +77,10 @@ export function SessionModelPicker({
   const blocked = modelsReady && Boolean(effectiveId) && !isPickableModel(models, effectiveId);
   const effective = models.find((model) => model.id === effectiveId);
   const options = useMemo(() => (effective ? modelThinkingOptions(effective) : []), [effective]);
-  const [effort, setEffort] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     onBlockedChange(blocked);
   }, [blocked, onBlockedChange]);
-
-  // A new model starts from its configured thinking option.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset only when the model changes.
-  useEffect(() => {
-    setEffort(undefined);
-  }, [effectiveId]);
 
   async function save(model: string, thinkingVariant?: string): Promise<void> {
     try {
@@ -114,7 +108,13 @@ export function SessionModelPicker({
       ? undefined
       : t("shell.modelDefault", { name: defaultName });
   const currentEffort = effective
-    ? (options.find((option) => option.value === effort) ?? selectedThinkingOption(effective))
+    ? storedThinkingVariant === undefined
+      ? selectedThinkingOption(effective)
+      : (options.find((option) => option.value === storedThinkingVariant) ?? {
+          value: storedThinkingVariant,
+          label: storedThinkingVariant,
+          level: effective.thinkingLevel,
+        })
     : undefined;
 
   return (
@@ -137,43 +137,65 @@ export function SessionModelPicker({
         />
       </span>
       {!blocked && effective && options.length > 1 && currentEffort ? (
-        <Menu.Root>
-          <Menu.Trigger
-            aria-description={isRunning ? t("shell.modelRunning") : undefined}
-            aria-label={t("shell.effort")}
-            className={cn(MODEL_CHIP_BASE, MODEL_CHIP_INTERACTIVE, MODEL_CHIP_TONE)}
-            data-testid="session-effort-picker"
-            disabled={isRunning}
-          >
-            <span className="max-w-[6rem] truncate">{currentEffort.label}</span>
-            <IconChevronDown aria-hidden size={12} stroke={2} />
-          </Menu.Trigger>
-          <Menu.Portal>
-            <Menu.Positioner align="start" side="top" sideOffset={6}>
-              <Menu.Popup className="origin-(--transform-origin) min-w-[160px] popup-chrome popup-motion p-1">
-                {options.map((option) => (
-                  <Menu.Item
-                    className="flex cursor-default items-center gap-2 rounded-md px-2.5 py-1.5 text-fg text-sm outline-none select-none data-highlighted:bg-hover"
-                    key={option.value}
-                    onClick={() => {
-                      setEffort(option.value);
-                      void save(effectiveId, option.value);
-                    }}
-                  >
-                    <span className="flex size-4 shrink-0 items-center justify-center text-accent">
-                      {option.value === currentEffort.value ? (
-                        <IconCheck size={14} stroke={2} />
-                      ) : null}
-                    </span>
-                    {option.label}
-                  </Menu.Item>
-                ))}
-              </Menu.Popup>
-            </Menu.Positioner>
-          </Menu.Portal>
-        </Menu.Root>
+        <ModelEffortPicker
+          current={currentEffort}
+          disabled={isRunning}
+          onSelect={(value) => {
+            void save(effectiveId, value);
+          }}
+          options={options}
+          testId="session-effort-picker"
+        />
       ) : null}
     </>
+  );
+}
+
+export function ModelEffortPicker({
+  current,
+  disabled = false,
+  onSelect,
+  options,
+  testId,
+}: {
+  current: ThinkingOption;
+  disabled?: boolean;
+  onSelect(value: string): void;
+  options: readonly ThinkingOption[];
+  testId: string;
+}) {
+  const t = useShellText();
+  return (
+    <Menu.Root>
+      <Menu.Trigger
+        aria-description={disabled ? t("shell.modelRunning") : undefined}
+        aria-label={t("shell.effort")}
+        className={cn(MODEL_CHIP_BASE, MODEL_CHIP_INTERACTIVE, MODEL_CHIP_TONE)}
+        data-testid={testId}
+        disabled={disabled}
+      >
+        <span className="max-w-[6rem] truncate">{current.label}</span>
+        <IconChevronDown aria-hidden size={12} stroke={2} />
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner align="start" side="top" sideOffset={6}>
+          <Menu.Popup className="origin-(--transform-origin) min-w-[160px] popup-chrome popup-motion p-1">
+            {options.map((option) => (
+              <Menu.Item
+                className="flex cursor-default items-center gap-2 rounded-md px-2.5 py-1.5 text-fg text-sm outline-none select-none data-highlighted:bg-hover"
+                key={option.value}
+                onClick={() => onSelect(option.value)}
+              >
+                <span className="flex size-4 shrink-0 items-center justify-center text-accent">
+                  {option.value === current.value ? <IconCheck size={14} stroke={2} /> : null}
+                </span>
+                {option.label}
+              </Menu.Item>
+            ))}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
   );
 }
 

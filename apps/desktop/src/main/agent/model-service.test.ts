@@ -498,6 +498,7 @@ describe("model-service custom provider config", () => {
     expect(resolved.variant).toBe("max");
     expect(resolved.thinkingLevel).toBe("max");
     expect(resolved.model.thinkingLevelMap?.max).toBe("max");
+    expect(() => resolveModelThinking(model, "not-supported")).toThrow("Thinking variant");
   });
 
   it("accepts the string-thinking format for OpenAI-compatible relays", async () => {
@@ -900,6 +901,15 @@ describe("runtime model catalog", () => {
     );
     const opus = registry.find("antigravity", "antigravity-claude-opus-4-6-thinking")!;
     expect(opus.thinkingLevelMap).toBeUndefined();
+    for (const level of ["high", "minimal"] as const) {
+      expect(resolveModelThinking(opus, undefined, level)).toMatchObject({
+        thinkingLevel: "high",
+        variant: "8192",
+        thinkingBudget: 8192,
+      });
+    }
+    expect(() => resolveModelThinking(opus, "high")).toThrow("Thinking variant");
+    expect(() => resolveModelThinking(opus, "removed", "high")).toThrow("Thinking variant");
     expect(resolveModelThinking(opus, "8192")).toMatchObject({
       thinkingLevel: "high",
       variant: "8192",

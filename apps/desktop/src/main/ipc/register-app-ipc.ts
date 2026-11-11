@@ -516,6 +516,7 @@ export function registerAppIpc({
       cwd: parsed.cwd,
       title: parsed.title,
       ...(parsed.model !== undefined ? { model: parsed.model } : {}),
+      ...(parsed.thinkingVariant !== undefined ? { thinkingVariant: parsed.thinkingVariant } : {}),
     });
   });
 

@@ -2241,6 +2241,7 @@ export function getModelThinkingVariant(modelId: string | undefined): string | u
 export function resolveModelThinking(
   model: Model<Api>,
   thinkingVariant?: string,
+  thinkingLevel?: ThinkingLevel,
 ): {
   model: Model<Api>;
   thinkingLevel: ModelThinkingLevel;
@@ -2253,7 +2254,19 @@ export function resolveModelThinking(
     ? thinking.budget
       ? (budgetThinkingOption(thinkingVariant, thinking.budget) ?? thinking.selected)
       : clampThinkingVariant(thinkingVariant, thinking.options)
-    : thinking.selected;
+    : thinkingLevel !== undefined
+      ? thinking.budget
+        ? thinkingLevel === "off"
+          ? budgetThinkingOption("off", thinking.budget)!
+          : thinking.selected
+        : selectedThinkingOption(undefined, thinkingLevel, thinking.options)
+      : thinking.selected;
+
+  if (thinkingVariant !== undefined && selected.value !== thinkingVariant) {
+    throw new Error(
+      `Thinking variant "${thinkingVariant}" is unavailable for ${modelToId(model)}.`,
+    );
+  }
 
   if (selected.level === "off" && isOpenRouterDynamicRoute(model)) {
     // Router aliases can select a model that requires reasoning. PI normally

@@ -289,7 +289,7 @@ const CHEVRON_SITES = [
   "features/settings/form-controls.tsx",
   "components/question/QuestionCard.tsx",
   "features/settings/settings-provider-ui.tsx",
-  "features/agent/ActivityGroup.tsx",
+  "components/conversation/ai-thinking-and-tool-calls.tsx",
   "features/agent/ToolGroup.tsx",
   "components/Sidebar.tsx",
 ];

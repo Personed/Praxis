@@ -59,7 +59,10 @@ import {
   takeRestoreSnapshotAtStartup,
 } from "./updater/update-service";
 import { installApplicationMenu } from "./windows/application-menu";
+import { declareDoomProtocol, registerDoomProtocol } from "./windows/doom-protocol";
 import { createMainWindow } from "./windows/main-window";
+
+declareDoomProtocol();
 
 // Chromium UI strings / Intl follow the OS language for the embedded browser
 // and any WebContents that inherit the process locale. Must run before ready.
@@ -172,6 +175,7 @@ if (!app.requestSingleInstanceLock()) {
   app
     .whenReady()
     .then(async () => {
+      registerDoomProtocol(join(import.meta.dirname, "../renderer"));
       startupTimeline.mark("main.electron-ready");
       // Groups → Projects (PR 4): if the one-time migration is pending, paint a
       // splash first, because the migration runs synchronously inside getDatabase().

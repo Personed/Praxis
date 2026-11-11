@@ -40,6 +40,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, "src/renderer/index.html"),
+          doom: resolve(__dirname, "src/renderer/doom.html"),
         },
       },
     },

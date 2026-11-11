@@ -25,7 +25,15 @@ function model(id: string, name: string): ModelInfo {
   };
 }
 
-const MODELS = [model("openai/gpt-5", "GPT-5"), model("anthropic/sonnet", "Claude Sonnet")];
+const MODELS: ModelInfo[] = [
+  {
+    ...model("openai/gpt-5", "GPT-5"),
+    supportsThinking: true,
+    thinkingLevel: "medium",
+    thinkingLevels: ["low", "medium", "high"],
+  },
+  model("anthropic/sonnet", "Claude Sonnet"),
+];
 
 /** Mirrors App's hero wiring: the host owns the pick and creates the chat with it on send. */
 function Harness({
@@ -34,7 +42,7 @@ function Harness({
   initialText = "",
 }: {
   defaultModelId: string;
-  onSend(message: string, modelId: string): void;
+  onSend(message: string, modelId: string, thinkingVariant?: string): void;
   initialText?: string;
 }) {
   const [heroModel, setHeroModel] = useState("");
@@ -54,7 +62,11 @@ function Harness({
       onContextChange={vi.fn()}
       onDraftChange={setDraft}
       onHeroModelChange={setHeroModel}
-      onSubmit={(message) => onSend(message, heroModel || defaultModelId)}
+      onSubmit={(message, _context, _delivery, _attachments, _skills, _mode, thinkingVariant) => {
+        const modelId = heroModel || defaultModelId;
+        if (thinkingVariant) onSend(message, modelId, thinkingVariant);
+        else onSend(message, modelId);
+      }}
       workspaceId="w1"
     />
   );
@@ -139,6 +151,7 @@ describe("Home composer can send a first message with no session model", () => {
     const listbox = await screen.findByRole("listbox");
     await user.click(within(listbox).getByRole("option", { name: "Claude Sonnet" }));
     await waitFor(() => expect(send().disabled).toBe(false));
+    expect(screen.queryByTestId("home-effort-picker")).toBeNull();
     await user.click(send());
     await waitFor(() => expect(onSend).toHaveBeenCalledWith("hello", "anthropic/sonnet"));
   });
@@ -151,6 +164,19 @@ describe("Home composer can send a first message with no session model", () => {
     expect(send().disabled).toBe(false);
     await user.click(send());
     await waitFor(() => expect(onSend).toHaveBeenCalledWith("ship it", "openai/gpt-5"));
+  });
+
+  it("passes the selected effort with the first message", async () => {
+    const user = userEvent.setup();
+    const onSend = vi.fn();
+    render(<Harness defaultModelId="openai/gpt-5" initialText="review this" onSend={onSend} />);
+    const effort = screen.getByTestId("home-effort-picker");
+    expect(effort.textContent).toBe("medium");
+    await user.click(effort);
+    await user.click(await screen.findByRole("menuitem", { name: "high" }));
+    expect(effort.textContent).toBe("high");
+    await user.click(send());
+    await waitFor(() => expect(onSend).toHaveBeenCalledWith("review this", "openai/gpt-5", "high"));
   });
 });
 

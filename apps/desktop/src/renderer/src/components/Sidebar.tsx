@@ -784,7 +784,11 @@ function InboxChatsSection({
       >
         Chats
       </SectionHeader>
-      <CollapsibleMotion className={SB_NEST} open={expanded} preset="default">
+      <CollapsibleMotion
+        className={cn(SB_NEST, "sidebar-nested-list")}
+        open={expanded}
+        preset="default"
+      >
         {sessions.map((session) => (
           <SessionRow
             sessionId={session.id}
@@ -951,7 +955,11 @@ function WorkspaceItem({
       >
         {workspace.displayName}
       </ProjectRow>
-      <CollapsibleMotion className={SB_NEST} open={expanded} preset="default">
+      <CollapsibleMotion
+        className={cn(SB_NEST, "sidebar-nested-list")}
+        open={expanded}
+        preset="default"
+      >
         {visibleSessions.map((session) => (
           <m.div
             animate={{ opacity: 1, y: 0 }}
@@ -1095,7 +1103,7 @@ function SessionRow({
       draggable={Boolean(movement) && !movement?.pending && !isRenaming}
       className={cn(
         SB_SESSION,
-        "group",
+        "sidebar-session-row group",
         movement?.before === sessionId && "border-t border-accent",
         isActive ? "text-fg-subtle" : "text-fg-subtle hover:bg-hover hover:text-fg-muted",
         menuOpen && !isActive && "bg-hover text-fg-muted",
@@ -1438,7 +1446,7 @@ function ProjectRow({
         <m.div
           className={cn(
             SB_ROW,
-            "group text-fg-muted hover:bg-hover hover:text-fg",
+            "sidebar-project-row group text-fg-muted hover:bg-hover hover:text-fg",
             menuOpen && "bg-hover text-fg",
           )}
           layout
@@ -1455,7 +1463,7 @@ function ProjectRow({
               <FolderIcon size={SB_ICON} stroke={SB_STROKE} />
             </span>
             <span className="min-w-0 truncate">{children}</span>
-            <span className="flex size-3 shrink-0 items-center justify-center text-fg-faint opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+            <span className="sidebar-disclosure flex size-3 shrink-0 items-center justify-center text-fg-faint opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
               <IconChevronRight
                 className="disclosure-chevron duration-(--motion-duration-base) ease-(--motion-ease-gentle)"
                 data-open={expanded ? "" : undefined}
@@ -1793,7 +1801,7 @@ function SectionHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="group mt-3 mb-0.5 flex h-6 items-center px-2 text-2xs font-normal text-fg-muted">
+    <div className="sidebar-section-header group mt-3 mb-0.5 flex h-6 items-center px-2 text-2xs font-normal text-fg-muted">
       <button
         aria-expanded={expanded}
         className="flex items-center gap-1 transition-colors hover:text-fg"
@@ -1801,7 +1809,7 @@ function SectionHeader({
         type="button"
       >
         <span>{children}</span>
-        <span className="flex size-3 items-center justify-center opacity-0 transition-opacity duration-(--motion-duration-base) group-hover:opacity-100 group-focus-within:opacity-100">
+        <span className="sidebar-disclosure flex size-3 items-center justify-center opacity-0 transition-opacity duration-(--motion-duration-base) group-hover:opacity-100 group-focus-within:opacity-100">
           <IconChevronRight
             className="disclosure-chevron duration-(--motion-duration-slow) ease-standard"
             data-open={expanded ? "" : undefined}

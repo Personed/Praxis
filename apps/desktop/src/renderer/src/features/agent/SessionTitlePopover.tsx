@@ -62,7 +62,7 @@ export function SessionTitlePopover({
         // The project folds into the tooltip below lg (as in the group header).
         title={tier === "lg" || !project ? session.title : `${session.title} · ${project}`}
       >
-        <span className="min-w-0 flex-1 truncate-fade" data-testid="session-title-text">
+        <span className="min-w-0 flex-1 truncate" data-testid="session-title-text">
           {session.title}
         </span>
         {tier === "sm" ? null : (
@@ -74,7 +74,7 @@ export function SessionTitlePopover({
         )}
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Positioner align="start" side="bottom" sideOffset={6}>
+        <Popover.Positioner align="center" side="bottom" sideOffset={6}>
           <Popover.Popup className="origin-(--transform-origin) w-[min(320px,calc(100vw-24px))] popup-chrome popup-motion p-3 outline-none">
             <div className="mb-2.5 truncate px-1 text-sm text-fg">{session.title}</div>
             <div className="flex flex-col gap-2.5">

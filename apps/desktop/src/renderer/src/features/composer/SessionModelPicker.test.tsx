@@ -63,6 +63,11 @@ function renderPicker(extra: Partial<Parameters<typeof SessionModelPicker>[0]> =
 const trigger = () => screen.getByTestId("model-picker-trigger");
 
 describe("SessionModelPicker", () => {
+  it("shows the effort selected on Home after opening the conversation", () => {
+    renderPicker({ storedModelId: "openai/gpt-5", storedThinkingVariant: "low" });
+    expect(screen.getByTestId("session-effort-picker").textContent).toContain("low");
+  });
+
   it("shows the chat's saved model", () => {
     const props = renderPicker();
     expect(trigger().textContent).toContain("Claude Sonnet");

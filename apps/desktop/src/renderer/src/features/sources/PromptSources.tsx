@@ -1,5 +1,6 @@
 import { Popover } from "@base-ui/react/popover";
 import { IconInfoCircle } from "@tabler/icons-react";
+import { Citation } from "../../components/conversation/citation";
 import { cn } from "../../lib/cn";
 import type { RunSource } from "./runSources";
 
@@ -75,22 +76,9 @@ export function PromptSources({
 }
 
 function SourceLabel({ source }: { source: RunSource }) {
-  const kindLabel =
-    source.kind === "file"
-      ? "File"
-      : source.kind === "documentation"
-        ? "Documentation"
-        : source.kind === "github"
-          ? "GitHub"
-          : source.kind === "connection"
-            ? "Connection"
-            : "Web";
   return (
     <span className="flex min-w-0 items-center gap-2">
-      <span className="shrink-0 rounded bg-elevated px-1 py-0.5 text-[9px] text-fg-muted">
-        {kindLabel}
-      </span>
-      <span className="min-w-0 truncate font-medium text-fg">{source.label}</span>
+      <Citation title={source.label} source={source.kind} />
       {source.detail ? (
         <span className="min-w-0 truncate text-fg-muted">{source.detail}</span>
       ) : null}

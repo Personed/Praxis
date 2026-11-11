@@ -20,6 +20,7 @@ export const NAV_RAIL_COLLAPSED_WIDTH = 60;
 export const NAV_RAIL_EXPANDED_WIDTH = 300;
 /** Below this viewport width the rail turns into a menu button + overlay sheet. */
 export const NAV_RAIL_COMPACT_QUERY = "(max-width: 640px)";
+const NAV_RAIL_HOVER_CLOSE_DELAY_MS = 400;
 
 /* Rail motion lives in lib/motion.ts (navRailMotion); re-exported for callers. */
 export { type NavRailMotion, navRailMotion };
@@ -147,6 +148,13 @@ export function NavRail({ label, pinned, compactMenuLabel, className, children }
   const [holds, setHolds] = useState<ReadonlySet<string>>(() => new Set());
   const [sheetOpen, setSheetOpen] = useState(false);
   const lastInput = useRef<"keyboard" | "pointer">("keyboard");
+  const hoverCloseTimer = useRef<number | undefined>(undefined);
+
+  const cancelHoverClose = useCallback(() => {
+    if (hoverCloseTimer.current === undefined) return;
+    window.clearTimeout(hoverCloseTimer.current);
+    hoverCloseTimer.current = undefined;
+  }, []);
 
   const hold = useCallback((key: string, active: boolean) => {
     setHolds((current) => {
@@ -159,10 +167,11 @@ export function NavRail({ label, pinned, compactMenuLabel, className, children }
   }, []);
 
   const collapse = useCallback(() => {
+    cancelHoverClose();
     setPointerInside(false);
     setKeyboardFocus(false);
     setSheetOpen(false);
-  }, []);
+  }, [cancelHoverClose]);
 
   // Remember how the user last interacted: focus that follows a click should not
   // keep the rail open once the pointer leaves, focus from Tab should.
@@ -184,10 +193,18 @@ export function NavRail({ label, pinned, compactMenuLabel, className, children }
   useEffect(() => {
     const nav = navElement;
     if (!nav) return;
-    const enter = () => setPointerInside(true);
+    const enter = () => {
+      cancelHoverClose();
+      setPointerInside(true);
+    };
     const leave = () => {
-      setPointerInside(false);
-      setKeyboardFocus(false);
+      cancelHoverClose();
+      // Let the cursor return after briefly crossing the expanding panel edge.
+      hoverCloseTimer.current = window.setTimeout(() => {
+        hoverCloseTimer.current = undefined;
+        setPointerInside(false);
+        setKeyboardFocus(false);
+      }, NAV_RAIL_HOVER_CLOSE_DELAY_MS);
     };
     const focusIn = () => {
       if (lastInput.current === "keyboard") setKeyboardFocus(true);
@@ -199,9 +216,7 @@ export function NavRail({ label, pinned, compactMenuLabel, className, children }
     };
     const keyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || isTextEntry(event.target)) return;
-      setPointerInside(false);
-      setKeyboardFocus(false);
-      setSheetOpen(false);
+      collapse();
     };
     // A chat dragged out of the rail must not collapse it under the pointer.
     const dragStart = () => hold("drag", true);
@@ -212,6 +227,7 @@ export function NavRail({ label, pinned, compactMenuLabel, className, children }
     nav.addEventListener("keydown", keyDown);
     nav.addEventListener("dragstart", dragStart);
     return () => {
+      cancelHoverClose();
       nav.removeEventListener("mouseenter", enter);
       nav.removeEventListener("mouseleave", leave);
       nav.removeEventListener("focusin", focusIn);
@@ -219,7 +235,7 @@ export function NavRail({ label, pinned, compactMenuLabel, className, children }
       nav.removeEventListener("keydown", keyDown);
       nav.removeEventListener("dragstart", dragStart);
     };
-  }, [navElement, hold]);
+  }, [navElement, hold, collapse, cancelHoverClose]);
 
   const dragging = holds.has("drag");
   useEffect(() => {
@@ -239,10 +255,11 @@ export function NavRail({ label, pinned, compactMenuLabel, className, children }
   const wasHeld = useRef(false);
   useEffect(() => {
     if (wasHeld.current && !held && navElement) {
+      cancelHoverClose();
       setPointerInside(pointerIsOver(navElement));
     }
     wasHeld.current = held;
-  }, [held, navElement]);
+  }, [held, navElement, cancelHoverClose]);
 
   useEffect(() => {
     if (!compact) setSheetOpen(false);

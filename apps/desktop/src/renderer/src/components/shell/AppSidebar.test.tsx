@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { domMax, LazyMotion } from "motion/react";
 import { type ReactNode, useState } from "react";
 import { createPortal } from "react-dom";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { SettingsSidebar } from "../../features/settings/sections/SettingsSidebar";
 import type { SettingsSectionId } from "../../features/settings/settings-types";
 import {
@@ -13,6 +13,16 @@ import {
   SIDEBAR_PINNED_KEY,
   writeSidebarPinned,
 } from "./AppSidebar";
+
+// Happy DOM rejects canceled WAAPI animations. Use Motion's JS fallback here.
+const nativeAnimation = vi.hoisted(() => {
+  const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, "animate");
+  Reflect.deleteProperty(Element.prototype, "animate");
+  return descriptor;
+});
+afterAll(() => {
+  if (nativeAnimation) Object.defineProperty(Element.prototype, "animate", nativeAnimation);
+});
 
 // Sidebar interactions do not depend on the mascot's asynchronous animation loop.
 vi.mock("../ui/ModusBot", () => ({ ModusBot: () => <span aria-hidden="true" /> }));
@@ -91,7 +101,7 @@ describe("AppSidebar", () => {
     );
   }
 
-  it("keeps portal Settings navigation open when the pointer moves into its items", () => {
+  it("keeps portal Settings navigation open when the pointer moves into its items", async () => {
     render(<SettingsNavigation />);
     const nav = screen.getByRole("navigation");
     fireEvent.mouseEnter(nav);
@@ -116,7 +126,7 @@ describe("AppSidebar", () => {
     fireEvent.mouseLeave(nav, {
       relatedTarget: screen.getByRole("button", { name: "Settings content" }),
     });
-    expect(screen.queryByRole("button", { name: "General" })).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "General" })).toBeNull());
   });
 
   it("closes after keyboard focus leaves portal Settings navigation", () => {
@@ -144,19 +154,19 @@ describe("AppSidebar", () => {
     expect(screen.getByTestId("app-sidebar").style.width).toBe("60px");
   });
 
-  it("collapsed shows icons only and expands on hover or keyboard focus", () => {
+  it("collapsed shows icons only and expands on hover or keyboard focus", async () => {
     renderSidebar({ pinned: false });
     expect(screen.queryByTestId("context-sidebar")).toBeNull();
     const nav = screen.getByRole("navigation");
     fireEvent.mouseEnter(nav);
     expect(screen.getByTestId("context-sidebar")).toBeTruthy();
     fireEvent.mouseLeave(nav);
-    expect(screen.queryByTestId("context-sidebar")).toBeNull();
+    await waitFor(() => expect(screen.queryByTestId("context-sidebar")).toBeNull());
     fireEvent.focus(screen.getByRole("button", { name: "New message" }));
     expect(screen.getByTestId("context-sidebar")).toBeTruthy();
   });
 
-  it("keeps Settings hover-expanded only while the pointer is over an unpinned sidebar", () => {
+  it("closes unpinned Settings navigation after the pointer leaves", async () => {
     renderSidebar({ active: "settings", pinned: false });
     const nav = screen.getByRole("navigation");
     const sidebar = document.querySelector(".nav-rail");
@@ -166,7 +176,7 @@ describe("AppSidebar", () => {
     expect(screen.getByTestId("context-sidebar")).toBeTruthy();
     fireEvent.mouseLeave(nav);
 
-    expect(screen.queryByTestId("context-sidebar")).toBeNull();
+    await waitFor(() => expect(screen.queryByTestId("context-sidebar")).toBeNull());
     expect(sidebar?.getAttribute("data-expanded")).toBe("false");
   });
 
@@ -188,6 +198,21 @@ describe("AppSidebar", () => {
     expect(unpin.getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(unpin);
     expect(h.onPinnedChange).toHaveBeenCalledWith(false);
+  });
+
+  it("keeps the header pin clickable briefly after the pointer leaves", () => {
+    const h = renderSidebar({ pinned: false });
+    const nav = screen.getByRole("navigation");
+    expect(screen.queryByRole("button", { name: "Pin sidebar open" })).toBeNull();
+    fireEvent.mouseEnter(nav);
+    const pin = screen.getByRole("button", { name: "Pin sidebar open" });
+    expect(screen.getByTestId("app-rail-brand").contains(pin)).toBe(true);
+    fireEvent.mouseLeave(nav);
+
+    expect(nav.getAttribute("data-expanded")).toBe("true");
+    expect(screen.getByRole("button", { name: "Pin sidebar open" })).toBe(pin);
+    fireEvent.click(pin);
+    expect(h.onPinnedChange).toHaveBeenCalledWith(true);
   });
 
   it("disables New message when no model can start a chat", () => {

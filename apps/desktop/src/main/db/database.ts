@@ -281,6 +281,7 @@ export function migrateDatabase(db: DatabaseSync): void {
   addColumn(db, "agent_sessions", "model", "text");
   addColumn(db, "agent_sessions", "pi_session_id", "text");
   addColumn(db, "agent_sessions", "pi_session_file", "text");
+  addColumn(db, "agent_sessions", "thinking_variant", "text");
   addColumn(
     db,
     "agent_sessions",
