@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   groupAgentWorkingLabel,
   groupRoomLabel,
@@ -47,34 +47,11 @@ describe("groupAgentWorkingLabel", () => {
 });
 
 describe("systemHourCycle", () => {
-  const OriginalIntl = Intl;
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("returns hour cycle when available", () => {
-    const mockResolvedOptions = vi.fn().mockReturnValue({ hourCycle: "h23" });
-    const MockDateTimeFormat = vi.fn().mockImplementation(function () {
-      return { resolvedOptions: mockResolvedOptions };
-    });
-    vi.stubGlobal("Intl", { ...OriginalIntl, DateTimeFormat: MockDateTimeFormat });
-
-    expect(systemHourCycle()).toBe("h23");
-  });
-
-  it("returns undefined when it throws", () => {
-    const MockDateTimeFormat = vi.fn().mockImplementation(function () {
-      throw new Error("Intl error");
-    });
-    vi.stubGlobal("Intl", { ...OriginalIntl, DateTimeFormat: MockDateTimeFormat });
-
-    expect(systemHourCycle()).toBeUndefined();
-  });
-
   it("returns the system hour cycle from Intl.DateTimeFormat resolvedOptions", () => {
+    const OriginalDateTimeFormat = Intl.DateTimeFormat;
+
     vi.stubGlobal("Intl", {
-      ...OriginalIntl,
+      ...Intl,
       DateTimeFormat: class MockDateTimeFormat {
         resolvedOptions() {
           return { hourCycle: "h12" };
@@ -82,12 +59,18 @@ describe("systemHourCycle", () => {
       },
     });
 
-    expect(systemHourCycle()).toBe("h12");
+    try {
+      expect(systemHourCycle()).toBe("h12");
+    } finally {
+      vi.stubGlobal("Intl", { ...Intl, DateTimeFormat: OriginalDateTimeFormat });
+    }
   });
 
   it("returns undefined when Intl throws an error", () => {
+    const OriginalDateTimeFormat = Intl.DateTimeFormat;
+
     vi.stubGlobal("Intl", {
-      ...OriginalIntl,
+      ...Intl,
       DateTimeFormat: class MockDateTimeFormat {
         resolvedOptions() {
           throw new Error("Simulated error");
@@ -95,6 +78,10 @@ describe("systemHourCycle", () => {
       },
     });
 
-    expect(systemHourCycle()).toBeUndefined();
+    try {
+      expect(systemHourCycle()).toBeUndefined();
+    } finally {
+      vi.stubGlobal("Intl", { ...Intl, DateTimeFormat: OriginalDateTimeFormat });
+    }
   });
 });

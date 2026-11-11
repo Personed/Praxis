@@ -289,8 +289,6 @@ const CHEVRON_SITES = [
   "features/settings/form-controls.tsx",
   "components/question/QuestionCard.tsx",
   "features/settings/settings-provider-ui.tsx",
-  "components/conversation/ai-thinking-and-tool-calls.tsx",
-  "features/agent/ToolGroup.tsx",
   "components/Sidebar.tsx",
 ];
 
@@ -305,6 +303,12 @@ function chevronCss() {
 }
 
 describe("disclosure chevrons", () => {
+  it("rotates the Trace chevron from aria-expanded without a reduced-motion transition", () => {
+    const text = source("components/ui/trace.tsx");
+    expect(text).toMatch(
+      /group-aria-expanded\/trace-collapsible-trigger:rotate-90 motion-reduce:transition-none/,
+    );
+  });
   it.each(CHEVRON_SITES)("%s uses .disclosure-chevron with data-open", (rel) => {
     const text = source(rel);
     expect(text).toContain("disclosure-chevron");

@@ -1,11 +1,23 @@
-import { memo } from "react";
+import {
+  IconAlertCircle,
+  IconBrain,
+  IconCircleCheck,
+  IconHourglass,
+  IconInfoCircle,
+} from "@tabler/icons-react";
+import { memo, type ReactNode, useState } from "react";
 import type { AgentInfo, ModelInfo, PlanRef } from "../../../../shared/contracts";
 import { getToolUiMeta, type ToolSummaryMeta, toolRenderKind } from "../../../../shared/tools";
-import { AgentState } from "../../components/conversation/agent-state";
 import {
-  ThinkingState,
-  type TraceNode,
-} from "../../components/conversation/ai-thinking-and-tool-calls";
+  Trace,
+  TraceCollapsible,
+  TraceCollapsibleContent,
+  TraceCollapsibleTrigger,
+  TraceDescription,
+  TraceIcon,
+  TraceLine,
+  TraceTitle,
+} from "../../components/ui/trace";
 import { WorkingText } from "../../components/ui/WorkingText";
 import { cn } from "../../lib/cn";
 import { MessageBlock } from "./MessageBlock";
@@ -213,21 +225,7 @@ export function WorkActivityRow({
   onOpenPlan?(plan: PlanRef): void;
 }) {
   if (item.type === "thought") {
-    if (!item.streaming && !item.text.trim()) return null;
-    return (
-      <ThinkingState
-        autoPlay={false}
-        defaultExpanded={Boolean(item.streaming)}
-        nodes={[
-          {
-            id: item.id,
-            type: "reasoning",
-            sentences: [item.text],
-            status: item.streaming ? "running" : "completed",
-          },
-        ]}
-      />
-    );
+    return <ReasoningStep item={item} running={item.streaming === true} />;
   }
   if (item.type === "todos") return <TodosCard {...item} />;
   if (item.type === "subagent") {
@@ -252,14 +250,129 @@ export function WorkActivityRow({
   );
 }
 
-function traceStatus(
-  item: Exclude<WorkFoldItem, { type: "work-activity-group" }>,
-  active: boolean,
-): NonNullable<TraceNode["status"]> {
-  if (item.type === "tool" && item.isError) return "failed";
-  if (item.type === "subagent" && item.status === "failed") return "failed";
-  if (item.type === "compaction" && item.status === "error") return "failed";
-  return active && phaseLabelForItem(item) ? "running" : "completed";
+function ReasoningStep({
+  item,
+  running,
+}: {
+  item: Extract<WorkActivityItem, { type: "thought" }>;
+  running: boolean;
+}) {
+  const [open, setOpen] = useState<boolean>();
+  const line = (
+    <TraceLine status={running ? "running" : undefined}>
+      <TraceIcon>
+        <IconBrain />
+      </TraceIcon>
+      <TraceTitle>{running ? <WorkingText>Thinking</WorkingText> : "Thought"}</TraceTitle>
+    </TraceLine>
+  );
+  if (!item.text.trim()) return running ? line : null;
+
+  return (
+    <TraceCollapsible open={open ?? running} onOpenChange={setOpen}>
+      <TraceCollapsibleTrigger>{line}</TraceCollapsibleTrigger>
+      <TraceCollapsibleContent keepMounted className="whitespace-pre-wrap">
+        {item.text}
+      </TraceCollapsibleContent>
+    </TraceCollapsible>
+  );
+}
+
+type FoldItem = Exclude<WorkFoldItem, { type: "work-activity-group" }>;
+type TraceStep = Exclude<FoldItem, { type: "message" }>;
+type TracePart =
+  | { kind: "inline"; item: FoldItem }
+  | { kind: "steps"; id: string; items: TraceStep[] };
+
+function traceParts(items: WorkFoldItem[]): TracePart[] {
+  const parts: TracePart[] = [];
+  for (const item of items.flatMap((item) =>
+    item.type === "work-activity-group" ? item.items : [item],
+  )) {
+    if (
+      item.type === "message" ||
+      (item.type === "tool" &&
+        (getToolUiMeta(item.name)?.groupInTimeline === false ||
+          (!item.isError && toolRenderKind(item.name) === "visual")))
+    ) {
+      parts.push({ kind: "inline", item });
+      continue;
+    }
+    if (item.type === "thought" && !item.text.trim() && !item.streaming) continue;
+    const last = parts.at(-1);
+    if (last?.kind === "steps") last.items.push(item);
+    else parts.push({ kind: "steps", id: item.id, items: [item] });
+  }
+  return parts;
+}
+
+function TraceSummary({
+  items,
+  running,
+  outcome,
+  renderStep,
+}: {
+  items: TraceStep[];
+  running: boolean;
+  outcome?: RunBlockItem["status"] | undefined;
+  renderStep(item: TraceStep): ReactNode;
+}) {
+  const [open, setOpen] = useState<boolean>();
+  const blocked = outcome === "blocked";
+  const activities = items.filter(
+    (item): item is GroupedWorkActivityItem =>
+      item.type === "tool" || item.type === "thought" || item.type === "compaction",
+  );
+  const failed =
+    outcome === "failed" ||
+    items.some(
+      (item) =>
+        (item.type === "tool" && item.isError) ||
+        (item.type === "compaction" && item.status === "error") ||
+        (item.type === "subagent" && item.status === "failed"),
+    );
+  const label = blocked
+    ? "Waiting for input"
+    : running
+      ? (workFoldPhaseLabel(items) ?? "Working")
+      : failed
+        ? "Activity failed"
+        : outcome === "cancelled"
+          ? "Activity stopped"
+          : activities.some((item) => item.type === "tool")
+            ? settledActivityLabel(activities)
+            : "Worked";
+  const detail =
+    (running && workActivityStreamCounts(activities)) ||
+    `${items.length} ${items.length === 1 ? "step" : "steps"}`;
+  const Glyph = running ? IconHourglass : failed ? IconAlertCircle : IconCircleCheck;
+
+  return (
+    <TraceCollapsible open={open ?? running} onOpenChange={setOpen}>
+      <TraceCollapsibleTrigger>
+        <TraceLine
+          status={blocked ? "pending" : running ? "running" : failed ? "error" : undefined}
+        >
+          <TraceIcon>
+            <Glyph />
+          </TraceIcon>
+          <TraceTitle>
+            {running && !blocked ? <WorkingText>{label}</WorkingText> : label}
+          </TraceTitle>
+          <TraceDescription>{detail}</TraceDescription>
+        </TraceLine>
+      </TraceCollapsibleTrigger>
+      <TraceCollapsibleContent keepMounted>
+        <Trace>
+          {items.map((item) => (
+            <div className="min-w-0" key={item.id}>
+              {renderStep(item)}
+            </div>
+          ))}
+        </Trace>
+      </TraceCollapsibleContent>
+    </TraceCollapsible>
+  );
 }
 
 /** Keep the execution trace in order with its messages and delivered artifacts. */
@@ -285,91 +398,102 @@ export const WorkFold = memo(function WorkFold({
   onOpenPlan?(plan: PlanRef): void;
 }) {
   const active = run.status === "running" || run.status === "blocked";
-  const flat = items.flatMap((item) => (item.type === "work-activity-group" ? item.items : [item]));
-  const nodes: TraceNode[] = flat.map((item) => ({
-    id: item.id,
-    type: item.type === "thought" ? "reasoning" : item.type === "tool" ? "tool" : "step",
-    primary:
-      item.type === "tool"
-        ? item.name
-        : item.type === "thought"
-          ? "Thinking"
-          : item.type === "notice"
-            ? item.title
-            : item.type === "message"
-              ? "Message"
-              : item.type,
-    status: traceStatus(item, active),
-    alwaysVisible:
-      item.type === "message" ||
-      (item.type === "tool" && !item.isError && toolRenderKind(item.name) === "visual"),
-    renderContent: () => {
-      if (item.type === "thought")
-        return <div className="whitespace-pre-wrap text-sm text-fg-muted">{item.text}</div>;
-      if (item.type === "notice")
-        return (
-          <div>
+  const parts = traceParts(items);
+  const lastTrace = parts.findLast((part) => part.kind === "steps");
+  const hasStreamingReply = items.some(
+    (item) => item.type === "message" && item.role === "assistant" && item.streaming,
+  );
+
+  function renderItem(item: FoldItem) {
+    if (item.type === "thought") {
+      return <ReasoningStep item={item} running={active && item.streaming === true} />;
+    }
+    if (item.type === "notice") {
+      return (
+        <TraceLine>
+          <TraceIcon>
+            <IconInfoCircle />
+          </TraceIcon>
+          <TraceTitle className="whitespace-normal">
             {item.title}
             {item.body ? ` — ${item.body}` : ""}
-          </div>
-        );
-      if (item.type === "message")
-        return (
-          <MessageBlock
-            assistantAgent={assistantAgent}
-            assistantAgentId={assistantAgentId}
-            content={item.content}
-            cwd={cwd}
-            messageId={item.id}
-            messageRole={item.role}
-            onOpenFile={onOpenFile}
-            streaming={item.streaming ?? false}
-            {...(item.attachments ? { attachments: item.attachments } : {})}
-            {...(item.contextChips ? { contextChips: item.contextChips } : {})}
-            {...(item.skills ? { skills: item.skills } : {})}
-            {...(item.sources ? { sources: item.sources } : {})}
-            {...(item.sourceStatus ? { sourceStatus: item.sourceStatus } : {})}
-          />
-        );
+          </TraceTitle>
+        </TraceLine>
+      );
+    }
+    if (item.type === "message") {
       return (
-        <WorkActivityRow
-          item={item}
-          {...(models ? { models } : {})}
-          {...(cwd ? { cwd } : {})}
-          {...(onOpenFile ? { onOpenFile } : {})}
-          {...(onOpenPlan ? { onOpenPlan } : {})}
-          {...(onOpenSubagent ? { onOpenSubagent } : {})}
+        <MessageBlock
+          assistantAgent={assistantAgent}
+          assistantAgentId={assistantAgentId}
+          content={item.content}
+          createdAt={item.createdAt}
+          cwd={cwd}
+          messageId={item.id}
+          messageRole={item.role}
+          onOpenFile={onOpenFile}
+          streaming={item.streaming ?? false}
+          {...(item.attachments ? { attachments: item.attachments } : {})}
+          {...(item.contextChips ? { contextChips: item.contextChips } : {})}
+          {...(item.skills ? { skills: item.skills } : {})}
+          {...(item.sources ? { sources: item.sources } : {})}
+          {...(item.sourceStatus ? { sourceStatus: item.sourceStatus } : {})}
         />
       );
-    },
-  }));
+    }
+    return (
+      <WorkActivityRow
+        item={item}
+        cwd={cwd}
+        {...(models ? { models } : {})}
+        {...(onOpenFile ? { onOpenFile } : {})}
+        {...(onOpenPlan ? { onOpenPlan } : {})}
+        {...(onOpenSubagent ? { onOpenSubagent } : {})}
+      />
+    );
+  }
+
   return (
     <section className="min-w-0 text-sm" aria-label="Execution activity">
-      <AgentState
-        size="sm"
-        status={
-          run.status === "blocked"
-            ? "needs-input"
-            : active
-              ? "working"
-              : run.status === "failed"
-                ? "error"
-                : run.status === "cancelled"
-                  ? "idle"
-                  : "complete"
-        }
-        label={
-          workFoldPhaseLabel(items) ??
-          (active
-            ? "Working"
-            : run.status === "failed"
-              ? "Failed"
-              : run.status === "cancelled"
-                ? "Stopped"
-                : "Completed")
-        }
-      />
-      <ThinkingState nodes={nodes} autoPlay={false} live={active} />
+      <Trace>
+        {!lastTrace && active && !hasStreamingReply ? (
+          <TraceLine status={run.status === "blocked" ? "pending" : "running"}>
+            <TraceIcon>
+              <IconHourglass />
+            </TraceIcon>
+            <TraceTitle>
+              {run.status === "blocked" ? (
+                "Waiting for input"
+              ) : (
+                <WorkingText>{workFoldPhaseLabel(items) ?? "Working"}</WorkingText>
+              )}
+            </TraceTitle>
+          </TraceLine>
+        ) : null}
+        {!lastTrace && (run.status === "failed" || run.status === "cancelled") ? (
+          <TraceLine status={run.status === "failed" ? "error" : undefined}>
+            <TraceIcon>
+              <IconAlertCircle />
+            </TraceIcon>
+            <TraceTitle>{run.status === "failed" ? "Run failed" : "Run stopped"}</TraceTitle>
+          </TraceLine>
+        ) : null}
+        {parts.map((part) =>
+          part.kind === "inline" ? (
+            <div className="min-w-0" key={part.item.id}>
+              {renderItem(part.item)}
+            </div>
+          ) : (
+            <TraceSummary
+              items={part.items}
+              key={part.id}
+              outcome={part === lastTrace ? run.status : undefined}
+              renderStep={renderItem}
+              running={active && !hasStreamingReply && part === lastTrace}
+            />
+          ),
+        )}
+      </Trace>
     </section>
   );
 });

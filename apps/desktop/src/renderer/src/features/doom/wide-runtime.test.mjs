@@ -28,12 +28,12 @@ test("GLFW input is translated into real DOM keyboard fields", () => {
   assert.equal(protocol.keyboardInput(32).code, "Space");
   assert.equal(protocol.keyboardInput(999), null);
 });
-test("startup selects shareware level, widescreen, freelook, WASD and silence", () => {
+test("startup selects shareware level, widescreen, freelook, WASD and sound", () => {
   assert.equal(typeof protocol.startupArguments, "function");
   const args = protocol.startupArguments({ width: 1440, height: 800 });
   assert.ok(args.includes("/DOOM1.WAD"));
-  assert.ok(args.includes("-nosound"));
-  assert.ok(args.includes("-nomusic"));
+  assert.ok(!args.includes("-nosound"));
+  assert.ok(!args.includes("-nomusic"));
   assert.ok(args.includes("e1m1"));
   const pair = (a, b) => args.some((v, i) => v === a && args[i + 1] === b);
   assert.ok(pair("+freelook", "1"));
@@ -42,7 +42,100 @@ test("startup selects shareware level, widescreen, freelook, WASD and silence", 
   assert.ok(pair("+vid_defheight", "800"));
 });
 
-const { loadDoomRuntime } = await import("./runtime.ts");
+const { createDoomAudio, loadDoomRuntime } = await import("./runtime.ts");
+
+test("audio bridge turns worker PCM into Web Audio playback", () => {
+  const sources = [];
+  const gains = [];
+  const context = {
+    state: "running",
+    destination: {},
+    createBuffer(channels, frames, sampleRate) {
+      const data = Array.from({ length: channels }, () => new Float32Array(frames));
+      return {
+        numberOfChannels: channels,
+        duration: frames / sampleRate,
+        data,
+        copyToChannel(samples, channel) {
+          data[channel].set(samples);
+        },
+      };
+    },
+    createBufferSource() {
+      const source = {
+        loop: false,
+        loopStart: 0,
+        loopEnd: 0,
+        playbackRate: { value: 1 },
+        connect(node) {
+          source.gainNode = node;
+          return node;
+        },
+        start(when, offset, duration) {
+          source.started = { when, offset, duration };
+        },
+        stop() {
+          source.stopped = true;
+        },
+      };
+      sources.push(source);
+      return source;
+    },
+    createGain() {
+      const gain = {
+        gain: { value: 1 },
+        connect(destination) {
+          return destination;
+        },
+        disconnect() {},
+      };
+      gains.push(gain);
+      return gain;
+    },
+    suspend() {
+      context.state = "suspended";
+      return Promise.resolve();
+    },
+    resume() {
+      context.state = "running";
+      return Promise.resolve();
+    },
+    close() {
+      context.state = "closed";
+      return Promise.resolve();
+    },
+  };
+  const audio = createDoomAudio(context);
+  audio.play({
+    audio: "play",
+    sourceId: 7,
+    sampleRate: 44100,
+    channels: 1,
+    ch0: new Float32Array([0.5, -0.5]),
+    loop: true,
+    loopStart: 0,
+    loopEnd: 0,
+    playbackRate: 1,
+    gain: 0.5,
+    duration: -1,
+  });
+  const [source] = sources;
+  assert.equal(source.loop, true);
+  assert.equal(source.loopEnd, 2 / 44100);
+  assert.deepEqual([...source.buffer.data[0]], [0.5, -0.5]);
+  assert.equal(gains[0].gain.value, 0.5);
+  assert.equal(source.started.when, 0);
+  assert.equal(source.started.offset, 0);
+  assert.equal(source.started.duration, undefined);
+  audio.pause();
+  assert.equal(context.state, "suspended");
+  audio.resume();
+  assert.equal(context.state, "running");
+  audio.stop(7);
+  assert.equal(source.stopped, true);
+  audio.dispose();
+  assert.equal(context.state, "closed");
+});
 function environment(t, { ready = true, transferError = false } = {}) {
   const originals = new Map();
   const set = (key, value) => {

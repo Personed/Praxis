@@ -7,7 +7,6 @@ const agent = (file: string) => read(`../features/agent/${file}`);
 const ACTIVITY = [
   "ActivityGroup.tsx",
   "ToolCard.tsx",
-  "ToolGroup.tsx",
   "SearchToolCard.tsx",
   "SubagentRow.tsx",
   "TodosCard.tsx",

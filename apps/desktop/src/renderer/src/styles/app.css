@@ -530,6 +530,13 @@
 .app-sidebar-slot .app-sidebar-rail .nav-rail-item {
   border-radius: 7px;
 }
+.app-sidebar-slot[data-destination="settings"],
+.app-sidebar-slot[data-destination="settings"] .nav-rail.app-sidebar-rail {
+  background-color: var(--surface-sidebar);
+}
+.app-sidebar-slot[data-destination="settings"] .nav-rail.app-sidebar-rail {
+  backdrop-filter: none;
+}
 .app-sidebar-slot .sidebar-pin-button {
   width: 32px;
   height: 32px;
@@ -981,7 +988,6 @@ select option:disabled {
 .activity-panel {
   --activity-inset-bg: color-mix(in srgb, var(--color-fg) 4%, transparent);
   --activity-inset-error-bg: color-mix(in srgb, var(--color-danger) 7%, transparent);
-  --tool-group-mask-from: var(--surface-sidebar);
   /* Text-safe diff/status hues on the panel and diff gutters (>= 4.5:1). */
   --color-danger: #f58787;
 }
@@ -1240,7 +1246,6 @@ body {
       }
       :root[data-native-glass="true"] .app-rail,
       :root[data-native-glass="true"] .app-context-sidebar,
-      :root[data-native-glass="true"] .app-settings-sidebar,
       :root[data-native-glass="true"] .app-layout-row > .surface-app {
         background-color: transparent;
         -webkit-backdrop-filter: none;
@@ -3312,10 +3317,12 @@ body
   width: fit-content;
   min-width: 0;
   max-width: calc(100% - 32px);
+  overflow-wrap: anywhere;
+}
+.chat-message-bubble:not([data-slot="message"]) {
   padding: 8px 16px;
   border: 0;
   background: var(--surface-chat);
-  overflow-wrap: anywhere;
 }
 .chat-message-bubble[data-message-role="user"] {
   max-width: calc(100% - 32px);
@@ -3340,9 +3347,13 @@ body
   max-width: 100%;
   overflow-x: auto;
 }
-.chat-message-bubble:focus-visible {
+.chat-message-bubble:focus-visible,
+.chat-message-bubble [data-slot="bubble-content"]:focus-visible {
   outline: 2px solid var(--color-focus-ring-soft);
   outline-offset: 2px;
+}
+.chat-message-bubble [data-slot="bubble-content"][role="button"] {
+  cursor: pointer;
 }
 @media (max-width: 640px) {
   .message-role-row {

@@ -1203,7 +1203,7 @@ export function App() {
 
               <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                 <div
-                  className="app-layout-row surface-app flex min-h-0 min-w-0 flex-1"
+                  className="app-layout-row surface-app relative flex min-h-0 min-w-0 flex-1"
                   ref={layoutRowRef}
                   style={{
                     gap: isDoomHome ? 0 : WORKSPACE_GUTTER,
@@ -1212,6 +1212,14 @@ export function App() {
                     paddingBottom: isDoomHome ? 0 : WORKSPACE_GUTTER,
                   }}
                 >
+                  {/* Keep the game mounted across navigation; it pauses while hidden. */}
+                  <div className="doom-home-layer" hidden={!isDoomHome}>
+                    <DoomHome
+                      active={isDoomHome}
+                      sidebarOpen={homeSidebarOpen}
+                      onToggleSidebar={toggleSidebar}
+                    />
+                  </div>
                   <div
                     hidden={isDoomHome && !homeSidebarOpen}
                     className={isDoomHome ? "doom-home-sidebar-overlay" : "contents"}
@@ -1381,8 +1389,10 @@ export function App() {
                       <MainSurface
                         data-shell-layer="main-surface"
                         className={cn(
-                          "surface-main relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
-                          !isDoomHome && "rounded-b-lg border border-hairline-strong border-t-0",
+                          "relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
+                          isDoomHome
+                            ? "pointer-events-none"
+                            : "surface-main rounded-b-lg border border-hairline-strong border-t-0",
                         )}
                         layout={!reduceMotion}
                         layoutDependency={responsiveSidebarOpen}
@@ -1451,7 +1461,7 @@ export function App() {
                             chat, center of the hero). */}
                         <UpdateToast
                           api={window.modus.update}
-                          className="absolute top-11 right-3 z-30"
+                          className="pointer-events-auto absolute top-11 right-3 z-30"
                         />
 
                         <GroupsMovedNotice
@@ -1540,7 +1550,7 @@ export function App() {
                                       ? { inspectorLiveSessionId: selectedSubagentId }
                                       : {})}
                                     onPlanUpdated={rememberActivePlan}
-                                    onSessionsChanged={() => void refreshSessions()}
+                                    onSessionsChanged={refreshSessions}
                                     session={visibleSession}
                                     workspace={
                                       workspaceById.get(visibleSession.workspaceId) ??
@@ -1553,17 +1563,16 @@ export function App() {
                           ) : (
                             <m.div
                               animate={{ opacity: 1, y: 0 }}
-                              className="doom-home-layout flex min-h-0 flex-1 flex-col overflow-hidden"
+                              className="doom-home-layout pointer-events-none flex min-h-0 flex-1 flex-col justify-end overflow-hidden"
                               exit={{ opacity: 0, y: motionOffset(-3, reduceMotion) }}
                               initial={{ opacity: 0, y: motionOffset(4, reduceMotion) }}
                               key="hero"
                               transition={swapTransition(tween("fast"), reduceMotion)}
                             >
-                              <DoomHome
-                                sidebarOpen={homeSidebarOpen}
-                                onToggleSidebar={toggleSidebar}
-                              />
-                              <div className="doom-home-composer relative z-10" data-home-composer>
+                              <div
+                                className="doom-home-composer pointer-events-auto relative z-10"
+                                data-home-composer
+                              >
                                 <HomeComposer
                                   canSubmit={canCreateSession}
                                   contextItems={heroContextItems}
@@ -1647,7 +1656,7 @@ export function App() {
                             onOpenSubagent={openSubagent}
                             onPlanUpdated={rememberActivePlan}
                             onSelectSubagent={setSelectedSubagentId}
-                            onSessionsChanged={() => void refreshSessions()}
+                            onSessionsChanged={refreshSessions}
                             onTabChange={setInspectorTab}
                             onWidthChange={setInspectorWidth}
                             onAddToChat={addContextToChat}

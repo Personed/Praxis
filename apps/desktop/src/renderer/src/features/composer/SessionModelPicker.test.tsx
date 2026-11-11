@@ -3,7 +3,8 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ModelInfo } from "../../../../shared/contracts";
-import { HeroModelPicker, SessionModelPicker } from "./SessionModelPicker";
+import { Composer } from "./Composer";
+import { useSessionComposerSelectors } from "./SessionModelPicker";
 
 function model(id: string, name: string, extra: Partial<ModelInfo> = {}): ModelInfo {
   return {
@@ -43,7 +44,29 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-function renderPicker(extra: Partial<Parameters<typeof SessionModelPicker>[0]> = {}) {
+type SessionSelectorsInput = Parameters<typeof useSessionComposerSelectors>[0];
+
+function SessionComposer(props: SessionSelectorsInput) {
+  const { blocked, selectors } = useSessionComposerSelectors(props);
+  return (
+    <>
+      <span data-testid="model-blocked">{String(blocked)}</span>
+      <Composer
+        canSubmit={!blocked}
+        contextItems={[]}
+        cwd={undefined}
+        model={props.storedModelId ?? props.defaultModelId}
+        models={props.models}
+        onContextChange={vi.fn()}
+        onSubmit={vi.fn()}
+        selectors={selectors}
+        workspaceId={undefined}
+      />
+    </>
+  );
+}
+
+function renderPicker(extra: Partial<SessionSelectorsInput> = {}) {
   const props = {
     sessionId: "s1",
     storedModelId: "anthropic/sonnet" as string | undefined,
@@ -51,27 +74,21 @@ function renderPicker(extra: Partial<Parameters<typeof SessionModelPicker>[0]> =
     models: MODELS,
     modelsReady: true,
     isRunning: false,
-    onBlockedChange: vi.fn(),
     onError: vi.fn(),
     onChanged: vi.fn(),
     ...extra,
   };
-  render(<SessionModelPicker {...props} />);
+  render(<SessionComposer {...props} />);
   return props;
 }
 
 const trigger = () => screen.getByTestId("model-picker-trigger");
 
 describe("SessionModelPicker", () => {
-  it("shows the effort selected on Home after opening the conversation", () => {
-    renderPicker({ storedModelId: "openai/gpt-5", storedThinkingVariant: "low" });
-    expect(screen.getByTestId("session-effort-picker").textContent).toContain("low");
-  });
-
   it("shows the chat's saved model", () => {
-    const props = renderPicker();
+    renderPicker();
     expect(trigger().textContent).toContain("Claude Sonnet");
-    expect(props.onBlockedChange).toHaveBeenLastCalledWith(false);
+    expect(screen.getByTestId("model-blocked").textContent).toBe("false");
   });
 
   it("shows Default (X) when the chat has no saved model", () => {
@@ -88,17 +105,17 @@ describe("SessionModelPicker", () => {
 
   it("asks to pick and blocks send when the saved model is unusable", () => {
     for (const storedModelId of ["gone/model", "modus/locked"]) {
-      const props = renderPicker({ storedModelId });
+      renderPicker({ storedModelId });
       expect(trigger().textContent).toContain("Pick a model");
-      expect(props.onBlockedChange).toHaveBeenLastCalledWith(true);
+      expect(screen.getByTestId("model-blocked").textContent).toBe("true");
       cleanup();
     }
   });
 
   it("blocks a removed app default until another model is selected", () => {
-    const props = renderPicker({ storedModelId: undefined, defaultModelId: "modus/locked" });
+    renderPicker({ storedModelId: undefined, defaultModelId: "modus/locked" });
     expect(trigger().textContent).toContain("Pick a model");
-    expect(props.onBlockedChange).toHaveBeenLastCalledWith(true);
+    expect(screen.getByTestId("model-blocked").textContent).toBe("true");
   });
 
   it("hides removed provider models and changes only this chat", async () => {
@@ -117,13 +134,15 @@ describe("SessionModelPicker", () => {
 
   it("shows the effort chip only for models with thinking options and sends the variant", async () => {
     renderPicker();
-    expect(screen.queryByTestId("session-effort-picker")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Choose effort" })).toBeNull();
     cleanup();
 
     const user = userEvent.setup();
     renderPicker({ storedModelId: "openai/gpt-5" });
-    await user.click(screen.getByTestId("session-effort-picker"));
-    await user.click(await screen.findByRole("menuitem", { name: "low" }));
+    await user.click(screen.getByRole("button", { name: "Choose effort" }));
+    const slider = await screen.findByRole("slider", { name: "Effort" });
+    expect(document.activeElement).toBe(slider);
+    await user.keyboard("{Home}");
     await waitFor(() =>
       expect(setModel).toHaveBeenCalledWith({
         sessionId: "s1",
@@ -134,8 +153,8 @@ describe("SessionModelPicker", () => {
   });
 
   it("does not block while the catalog is still loading", () => {
-    const props = renderPicker({ models: [], modelsReady: false });
-    expect(props.onBlockedChange).toHaveBeenLastCalledWith(false);
+    renderPicker({ models: [], modelsReady: false });
+    expect(screen.getByTestId("model-blocked").textContent).toBe("false");
     expect(trigger().textContent).not.toContain("Pick a model");
   });
 
@@ -161,36 +180,5 @@ describe("SessionModelPicker", () => {
       expect(props.onError).toHaveBeenCalledWith("Can't change the model while a run is active."),
     );
     expect(props.onChanged).not.toHaveBeenCalled();
-  });
-});
-
-describe("HeroModelPicker (home composer)", () => {
-  it("with no default asks to pick, and a pick goes to the host only", async () => {
-    const user = userEvent.setup();
-    const onValueChange = vi.fn();
-    render(
-      <HeroModelPicker defaultModelId="" models={MODELS} onValueChange={onValueChange} value="" />,
-    );
-    const button = trigger();
-    expect(button.textContent).toMatch(/Pick a model/);
-    await user.click(button);
-    const listbox = await screen.findByRole("listbox");
-    expect(within(listbox).queryByRole("option", { name: "Locked Pro" })).toBeNull();
-    await user.click(within(listbox).getByRole("option", { name: "Claude Sonnet" }));
-    expect(onValueChange).toHaveBeenCalledWith("anthropic/sonnet");
-    expect(setModel).not.toHaveBeenCalled();
-    expect(setDefault).not.toHaveBeenCalled();
-  });
-
-  it("shows the app default when nothing is picked", () => {
-    render(
-      <HeroModelPicker
-        defaultModelId="openai/gpt-5"
-        models={MODELS}
-        onValueChange={vi.fn()}
-        value=""
-      />,
-    );
-    expect(trigger().textContent).toMatch(/Default \(GPT-5\)/);
   });
 });

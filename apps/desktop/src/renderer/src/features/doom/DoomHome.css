@@ -34,28 +34,20 @@
   height: 34px;
 }
 .doom-home-sidebar {
-  position: absolute;
-  top: 12px;
-  left: 12px;
   display: grid;
   place-items: center;
   width: 44px;
   height: 44px;
   color: #f2f4f8;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-}
-.doom-home-sidebar::before {
-  content: "";
-  position: absolute;
-  inset: 3px;
   background: rgb(12 17 25 / 78%);
   border: 1px solid rgb(255 255 255 / 12%);
   border-radius: 8px;
+  cursor: pointer;
 }
-.doom-home-sidebar svg {
-  position: relative;
+.doom-home-sidebar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
 }
 .doom-home-sidebar:focus-visible {
   outline: 2px solid #a577ff;
@@ -96,9 +88,18 @@
   background: var(--color-panel);
   box-shadow: 12px 0 32px rgb(0 0 0 / 30%);
 }
+.doom-home-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+}
+.doom-home-layer[hidden] {
+  display: none;
+}
 .doom-home-layout {
   position: relative;
-  background: var(--color-canvas);
 }
 .doom-home-composer {
   flex: none;
@@ -110,16 +111,7 @@
 }
 @media (max-height: 560px) {
   .doom-home-commands dl {
-    display: grid;
-    grid-template-columns: repeat(2, auto);
-    column-gap: 12px;
-    margin-top: 6px;
-    padding: 6px 8px;
-    font-size: 10px;
-  }
-  .doom-home-commands dl div {
-    gap: 8px;
-    padding: 1px 0;
+    display: none;
   }
   .doom-home-composer {
     padding: 8px 12px;

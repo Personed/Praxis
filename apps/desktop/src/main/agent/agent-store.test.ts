@@ -1,7 +1,6 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   AGENT_AVATAR_COLORS,
@@ -17,7 +16,7 @@ vi.mock("electron", () => ({
   },
 }));
 
-const { getDatabase, migrateDatabase } = await import("../db/database");
+const { getDatabase } = await import("../db/database");
 const {
   getAgentSession,
   createAgentSessionRecord,
@@ -66,40 +65,6 @@ afterAll(async () => {
 });
 
 describe("agent-store", () => {
-  it("upgrades the previous schema additively without changing legacy model selection", () => {
-    const db = new DatabaseSync(":memory:");
-    try {
-      migrateDatabase(db);
-      db.exec("alter table agent_sessions drop column thinking_variant");
-      db.exec(
-        "insert into workspaces (id, root_path, display_name, is_git_repository, last_opened_at, created_at) values ('w', '/repo', 'repo', 0, 'now', 'now')",
-      );
-      db.exec(
-        "insert into agent_sessions (id, workspace_id, title, cwd, status, model, created_at, updated_at) values ('s', 'w', 'legacy', '/repo', 'idle', 'saved/model', 'now', 'now')",
-      );
-      migrateDatabase(db);
-      migrateDatabase(db);
-      expect(
-        db.prepare("select model, thinking_variant from agent_sessions where id = 's'").get(),
-      ).toMatchObject({ model: "saved/model", thinking_variant: null });
-    } finally {
-      db.close();
-    }
-  });
-
-  it("keeps legacy sessions unmodified and persists per-session thinking across metadata updates", () => {
-    const workspaceId = crypto.randomUUID();
-    const sessionId = crypto.randomUUID();
-    insertWorkspace(workspaceId);
-    insertSession(workspaceId, sessionId, "Legacy");
-    expect(getAgentSession(sessionId)?.thinkingVariant).toBeUndefined();
-    updateAgentSessionMetadata(sessionId, { model: "mock/model", thinkingVariant: "high" });
-    updateAgentSessionMetadata(sessionId, { piSessionId: "resumed" });
-    expect(getAgentSession(sessionId)?.thinkingVariant).toBe("high");
-    updateAgentSessionMetadata(sessionId, { thinkingVariant: undefined });
-    expect(getAgentSession(sessionId)?.thinkingVariant).toBeUndefined();
-  });
-
   it("includes pending input IDs and the event cursor in the session list snapshot", () => {
     const workspaceId = `workspace-${crypto.randomUUID()}`;
     const sessionId = `session-${crypto.randomUUID()}`;

@@ -27,7 +27,7 @@ const ANCHORS: Record<string, string[]> = {
     ">{body}</span> : null}",
     ">Provider-reported · main run</span>",
   ],
-  "../features/agent/ToolCard.tsx": ["title={status}>"],
+  "../features/agent/ToolCard.tsx": ["title={target}>"],
   "../features/composer/SlashMenu.tsx": [">{scopeLabel}</span>"],
   "../features/diff/DiffPanel.tsx": [
     ">{reviewTurn.status}</span>",
@@ -161,7 +161,6 @@ const FAINT_BUDGET: Record<string, number> = {
   "../features/agent/Timeline.tsx": 3,
   "../features/agent/TodosCard.tsx": 10,
   "../features/agent/ToolCard.tsx": 5,
-  "../features/agent/ToolGroup.tsx": 1,
   "../features/agent/changes/ChangeStats.tsx": 2,
   "../features/agent/diff/InlineDiff.tsx": 2,
   "../features/agents/AgentDialog.tsx": 3,
@@ -227,14 +226,18 @@ describe("fg-faint mixed labels", () => {
       const source = read(path);
       for (const anchor of anchors) {
         const at = occurrences(source, anchor);
-        expect(at, `${path}: ${anchor} is unique`).toHaveLength(1);
-        const name = classNameAt(source, at[0] as number);
-        expect(name, `${path}: ${anchor}`).toMatch(/(^|\s)text-fg-muted(\s|$)/);
-        expect(name, `${path}: ${anchor}`).not.toMatch(/text-fg-(faint|subtle)/);
-        checked += 1;
+        const count =
+          path.endsWith("/PromptSources.tsx") && anchor === ">{source.detail}</span>" ? 3 : 1;
+        expect(at, `${path}: ${anchor}`).toHaveLength(count);
+        for (const index of at) {
+          const name = classNameAt(source, index);
+          expect(name, `${path}: ${anchor}`).toMatch(/(^|\s)text-fg-muted(\s|$)/);
+          expect(name, `${path}: ${anchor}`).not.toMatch(/text-fg-(faint|subtle)/);
+          checked += 1;
+        }
       }
     }
-    expect(checked).toBe(79);
+    expect(checked).toBe(81);
   });
 
   it("touched files do not gain fg-faint uses", () => {

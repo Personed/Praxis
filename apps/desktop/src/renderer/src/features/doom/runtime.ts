@@ -33,6 +33,109 @@ mouse2=+altattack
 7=slot 7
 `;
 
+export type DoomAudioMessage = {
+  audio: string;
+  sourceId: number;
+  sampleRate: number;
+  channels: number;
+  ch0: Float32Array<ArrayBuffer>;
+  ch1?: Float32Array<ArrayBuffer> | null | undefined;
+  offset?: number | undefined;
+  duration?: number | undefined;
+  loop?: boolean | undefined;
+  loopStart?: number | undefined;
+  loopEnd?: number | undefined;
+  playbackRate?: number | undefined;
+  gain?: number | undefined;
+};
+
+export type DoomAudio = {
+  play(message: DoomAudioMessage): void;
+  stop(sourceId: number): void;
+  pause(): void;
+  resume(): void;
+  dispose(): void;
+};
+
+/**
+ * Main-thread half of the engine's audio bridge: the worker shim captures
+ * OpenAL buffers and posts them here, where a real AudioContext plays them.
+ */
+export function createDoomAudio(context: AudioContext): DoomAudio {
+  const sources = new Map<number, AudioBufferSourceNode>();
+  let paused = false;
+  return {
+    play(message) {
+      if (!message.ch0?.length) return;
+      if (!paused && context.state === "suspended") void context.resume();
+      const buffer = context.createBuffer(
+        Math.max(1, message.channels || 1),
+        message.ch0.length,
+        message.sampleRate,
+      );
+      buffer.copyToChannel(message.ch0, 0);
+      if (message.ch1 && buffer.numberOfChannels > 1) buffer.copyToChannel(message.ch1, 1);
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.loop = message.loop === true;
+      if (source.loop) {
+        source.loopStart = message.loopStart || 0;
+        source.loopEnd = message.loopEnd || buffer.duration;
+      }
+      source.playbackRate.value = message.playbackRate || 1;
+      const gain = context.createGain();
+      gain.gain.value = message.gain ?? 1;
+      source.connect(gain).connect(context.destination);
+      sources.get(message.sourceId)?.stop();
+      sources.set(message.sourceId, source);
+      source.onended = () => {
+        sources.delete(message.sourceId);
+        gain.disconnect();
+      };
+      // `when` is the worker's AudioContext clock; starting immediately avoids
+      // translating clocks and drifting the whole mix.
+      source.start(
+        0,
+        Math.max(0, message.offset || 0),
+        message.duration !== undefined && message.duration >= 0 ? message.duration : undefined,
+      );
+    },
+    stop(sourceId) {
+      sources.get(sourceId)?.stop();
+      sources.delete(sourceId);
+    },
+    pause() {
+      paused = true;
+      void context.suspend();
+    },
+    resume() {
+      paused = false;
+      void context.resume();
+    },
+    dispose() {
+      for (const source of sources.values()) {
+        try {
+          source.stop();
+        } catch {
+          // already stopped
+        }
+      }
+      sources.clear();
+      void context.close();
+    },
+  };
+}
+
+/** Called inside the click gesture so the browser lets the context play. */
+function openDoomAudio(): DoomAudio | undefined {
+  if (typeof AudioContext === "undefined") return undefined;
+  try {
+    return createDoomAudio(new AudioContext());
+  } catch {
+    return undefined;
+  }
+}
+
 export async function loadDoomRuntime(
   host: HTMLElement,
   signal: AbortSignal,
@@ -43,20 +146,26 @@ export async function loadDoomRuntime(
     throw new Error(
       "Este runtime requer WebAssembly JSPI e OffscreenCanvas. Atualize o aplicativo para executar o DOOM widescreen.",
     );
+  const audio = openDoomAudio();
   const files: Record<string, Uint8Array> = {};
   const assets: [string, string][] = [
     ...support.map((name): [string, string] => [`/${name}`, `/doom/gzdoom/${name}`]),
     ["/DOOM1.WAD", "/doom/game/DOOM1.WAD"],
   ];
-  await Promise.all(
-    assets.map(async ([name, url]) => {
-      const response = await fetch(url, { signal });
-      if (!response.ok)
-        throw new Error("Não foi possível carregar os arquivos locais do DOOM widescreen.");
-      files[name] = new Uint8Array(await response.arrayBuffer());
-    }),
-  );
-  signal.throwIfAborted();
+  try {
+    await Promise.all(
+      assets.map(async ([name, url]) => {
+        const response = await fetch(url, { signal });
+        if (!response.ok)
+          throw new Error("Não foi possível carregar os arquivos locais do DOOM widescreen.");
+        files[name] = new Uint8Array(await response.arrayBuffer());
+      }),
+    );
+    signal.throwIfAborted();
+  } catch (error) {
+    audio?.dispose();
+    throw error;
+  }
   files["/nexo.ini"] = new TextEncoder().encode(config);
   const canvas = document.createElement("canvas");
   canvas.className = "doom-home-game";
@@ -70,6 +179,7 @@ export async function loadDoomRuntime(
     worker = new Worker("/doom/gzdoom/nexo.worker.js");
   } catch (error) {
     canvas.remove();
+    audio?.dispose();
     throw error;
   }
   let disposed = false;
@@ -112,6 +222,8 @@ export async function loadDoomRuntime(
   };
   let lastSize = initialSize;
   const observer = new ResizeObserver(() => {
+    // Hidden home route: keep the backbuffer, don't resize to 2x2.
+    if (host.clientWidth === 0 || host.clientHeight === 0) return;
     const size = renderSize(host.clientWidth, host.clientHeight);
     if (size.width !== lastSize.width || size.height !== lastSize.height) {
       lastSize = size;
@@ -128,6 +240,7 @@ export async function loadDoomRuntime(
     clearTimeout(bootTimer);
     observer.disconnect();
     signal.removeEventListener("abort", abort);
+    audio?.dispose();
     worker.terminate();
     canvas.remove();
     rejectBoot?.(signal.aborted ? signal.reason : new Error("DOOM encerrado."));
@@ -159,6 +272,11 @@ export async function loadDoomRuntime(
       };
       worker.onmessage = ({ data }) => {
         if (disposed || failed) return;
+        if (data.audio) {
+          if (data.audio === "play") audio?.play(data);
+          else if (data.audio === "stop") audio?.stop(data.sourceId);
+          return;
+        }
         if (data.type === "game-ready") {
           clearTimeout(timer);
           booted = true;
@@ -195,6 +313,7 @@ export async function loadDoomRuntime(
       dispose,
       pause() {
         releaseInputs();
+        audio?.pause();
         if (playing) {
           post({ type: "suspend", paused: true });
           post({ type: "pointerlock", locked: false });
@@ -203,6 +322,7 @@ export async function loadDoomRuntime(
       },
       resume() {
         if (!playing && !disposed) {
+          audio?.resume();
           post({ type: "pointerlock", locked: true });
           post({ type: "suspend", paused: false });
           playing = true;

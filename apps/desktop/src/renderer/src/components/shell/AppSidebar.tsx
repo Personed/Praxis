@@ -88,6 +88,7 @@ export function AppSidebar({
   return (
     <div
       className="app-sidebar-slot relative h-full shrink-0"
+      data-destination={active}
       data-pinned={pinned ? "true" : "false"}
       data-shell-layer="app-sidebar"
       data-testid="app-sidebar"
@@ -172,7 +173,7 @@ function Brand({
             <button
               aria-label={pinLabel}
               aria-pressed={pinned}
-              className="nav-rail-icon-button sidebar-pin-button shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              className="nav-rail-icon-button sidebar-pin-button shrink-0"
               onClick={() => onPinnedChange(!pinned)}
               title={pinLabel}
               type="button"

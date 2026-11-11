@@ -55,9 +55,14 @@ describe("Activity contrast", () => {
     expect(src).toContain("px-2 text-right text-fg-muted tabular-nums");
   });
 
-  it("Inspector tool trigger: 2px accent ring on keyboard focus", () => {
-    const trigger = block(".inspector-tool-trigger:focus-visible");
-    expect(trigger).toContain("outline: 2px solid var(--inspector-accent)");
-    expect(trigger).toContain("outline-offset: 2px");
+  it("Inspector tabs: 2px accent ring 3px out on keyboard focus", () => {
+    const src = read("../features/inspector/Inspector.tsx");
+    for (const cls of [
+      "focus-visible:outline-2",
+      "focus-visible:outline-solid",
+      "focus-visible:outline-offset-3",
+      "focus-visible:outline-accent",
+    ])
+      expect(src).toContain(cls);
   });
 });

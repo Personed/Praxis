@@ -3,64 +3,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { WorkActivityRow, WorkFold, workActivityStreamCounts } from "./ActivityGroup";
 import type { GroupedWorkActivityItem, RunBlockItem, WorkFoldItem } from "./Timeline";
-import { ToolGroup } from "./ToolGroup";
 
-afterEach(() => cleanup());
-
-const rows = (n: number) =>
-  Array.from({ length: n }, (_, i) => (
-    // biome-ignore lint/suspicious/noArrayIndexKey: static fixture rows
-    <div data-row key={i}>
-      row {i}
-    </div>
-  ));
-
-describe("ToolGroup", () => {
-  it("starts collapsed and toggles open", () => {
-    let open = false;
-    const { rerender } = render(
-      <ToolGroup label="Read 2 files" onToggle={() => (open = !open)} open={open}>
-        {rows(2)}
-      </ToolGroup>,
-    );
-    const toggle = screen.getByRole("button", { name: /Read 2 files/ });
-    expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    expect(document.querySelectorAll("[data-row]")).toHaveLength(0);
-    fireEvent.click(toggle);
-    rerender(
-      <ToolGroup label="Read 2 files" onToggle={() => (open = !open)} open={open}>
-        {rows(2)}
-      </ToolGroup>,
-    );
-    expect(toggle.getAttribute("aria-expanded")).toBe("true");
-    expect(document.querySelectorAll("[data-row]")).toHaveLength(2);
-  });
-
-  it("windows the list with a top mask only while streaming with many rows", () => {
-    const { rerender } = render(
-      <ToolGroup active detail="2 files" label="Searching" onToggle={() => {}} open>
-        {rows(6)}
-      </ToolGroup>,
-    );
-    expect(document.querySelector("[data-tool-group]")?.getAttribute("data-tool-group")).toBe(
-      "streaming",
-    );
-    expect(screen.getByText("2 files")).toBeTruthy();
-    expect(document.querySelector("[data-tool-group-mask]")).toBeTruthy();
-    expect((document.querySelector("[data-tool-group-list]") as HTMLElement).style.maxHeight).toBe(
-      "220px",
-    );
-    rerender(
-      <ToolGroup label="Read 6 files" onToggle={() => {}} open>
-        {rows(6)}
-      </ToolGroup>,
-    );
-    expect(document.querySelector("[data-tool-group-mask]")).toBeNull();
-    expect(document.querySelector("[data-tool-group]")?.getAttribute("data-tool-group")).toBe(
-      "settled",
-    );
-  });
-});
+afterEach(cleanup);
 
 const tool = (id: string, name: string, args: unknown, done = true): GroupedWorkActivityItem => ({
   id,
@@ -71,7 +15,7 @@ const tool = (id: string, name: string, args: unknown, done = true): GroupedWork
   ...(done ? { isComplete: true } : {}),
 });
 
-describe("work activity group (ActivityGroup + ToolGroup)", () => {
+describe("work activity trace", () => {
   it("counts distinct files and searches for the streaming detail", () => {
     expect(
       workActivityStreamCounts([
@@ -85,7 +29,7 @@ describe("work activity group (ActivityGroup + ToolGroup)", () => {
     expect(workActivityStreamCounts([tool("1", "bash", { command: "ls" })])).toBe("");
   });
 
-  it("renders a streaming group as a live execution trace", () => {
+  it("opens a running trace with counts and preserves its nested tool card", () => {
     const run: RunBlockItem = {
       id: "run",
       type: "run",
@@ -101,13 +45,15 @@ describe("work activity group (ActivityGroup + ToolGroup)", () => {
       },
     ];
     render(<WorkFold items={items} run={run} />);
-    const header = screen.getByRole("button", { name: /Working/ });
-    expect(header.getAttribute("aria-expanded")).toBe("true");
-    expect(screen.getByRole("button", { name: /read read/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /grep grep/ })).toBeTruthy();
+    const group = screen.getByRole("button", { name: /Searching/ });
+    expect(group.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByText("1 file, 1 search")).toBeTruthy();
+    expect(screen.getByText("Searching…")).toBeTruthy();
+    fireEvent.click(group);
+    expect(group.getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("settles the trace collapsed and lets the user reopen it", () => {
+  it("settled group shows the summary label and no streaming detail", () => {
     const run: RunBlockItem = {
       id: "run",
       type: "run",
@@ -124,10 +70,9 @@ describe("work activity group (ActivityGroup + ToolGroup)", () => {
       },
     ];
     render(<WorkFold items={items} run={run} />);
-    const header = screen.getByRole("button", { name: /Worked/ });
-    expect(header.getAttribute("aria-expanded")).toBe("false");
-    fireEvent.click(header);
-    expect(header.getAttribute("aria-expanded")).toBe("true");
+    const group = screen.getByRole("button", { name: /Read 2 files/ });
+    expect(screen.getByText("2 steps")).toBeTruthy();
+    expect(group.getAttribute("aria-expanded")).toBe("false");
   });
 
   it("WorkActivityRow still renders non-search tools through ToolCard", () => {

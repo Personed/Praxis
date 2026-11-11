@@ -22,11 +22,13 @@ import type {
   PromptImageAttachment,
   SkillSelection,
 } from "../../../../shared/contracts";
-import { MessageWithHeader } from "../../components/conversation/c-message-3";
 import { CopyButton } from "../../components/ui/CopyButton";
+import { ConversationMessage } from "../../components/ui/c-message-3";
 import { ImageThumb } from "../../components/ui/ImageViewer";
 import { ModusBot } from "../../components/ui/ModusBot";
+import { WorkingText } from "../../components/ui/WorkingText";
 import { cn } from "../../lib/cn";
+import { formatUiDate, useUiIntlLocale } from "../../lib/uiIntl";
 import { useClipFade } from "../../lib/useClipFade";
 import { AgentAvatar } from "../agents/AgentAvatar";
 import {
@@ -50,6 +52,7 @@ type MessageBlockProps = {
   /** Timeline id of this message — the rollback anchor for edit & resend. */
   messageId: string;
   content: string;
+  createdAt?: number | undefined;
   streaming?: boolean;
   /** User only: pre-run snapshot this message can roll the files back to. */
   checkpointId?: string;
@@ -92,6 +95,7 @@ export const MessageBlock = memo(function MessageBlock({
   assistantAgentId,
   messageId,
   content,
+  createdAt,
   streaming = false,
   checkpointId,
   onRestoreCheckpoint,
@@ -111,6 +115,11 @@ export const MessageBlock = memo(function MessageBlock({
   compactClip = false,
 }: MessageBlockProps) {
   const [editing, setEditing] = useState(false);
+  const locale = useUiIntlLocale();
+  const time =
+    createdAt !== undefined && Number.isFinite(new Date(createdAt).getTime())
+      ? formatUiDate(createdAt, { hour: "numeric", minute: "2-digit" }, locale)
+      : undefined;
   // Pause measurement while the edit composer owns the slot — remounting the
   // clip surface must re-run the observer (active flip), not reuse a stale one.
   const { boxRef, contentRef, clipped } = useClipFade(!editing && compactClip);
@@ -177,27 +186,30 @@ export const MessageBlock = memo(function MessageBlock({
             workspaceId={workspaceId}
           />
         ) : (
-          /* biome-ignore lint/a11y: The conditional control can contain nested image buttons. */
-          <div
-            aria-label={canEdit ? "Edit message" : undefined}
-            className={cn(
-              "chat-message-bubble chat-message-surface text-left text-sm text-fg leading-relaxed",
-              canEdit && "cursor-pointer",
-            )}
+          <ConversationMessage
+            align="end"
+            className="chat-message-bubble"
             data-message-role="user"
-            onClick={canEdit ? () => setEditing(true) : undefined}
-            onKeyDown={
-              canEdit
-                ? (event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      setEditing(true);
-                    }
-                  }
-                : undefined
-            }
-            role={canEdit ? "button" : undefined}
-            tabIndex={canEdit ? 0 : undefined}
+            footer={time ? <span className="tabular-nums">{time}</span> : null}
+            {...(canEdit
+              ? {
+                  bubbleProps: {
+                    "aria-label": "Edit message",
+                    onClick: () => setEditing(true),
+                    onKeyDown: (event) => {
+                      if (
+                        event.target === event.currentTarget &&
+                        (event.key === "Enter" || event.key === " ")
+                      ) {
+                        event.preventDefault();
+                        setEditing(true);
+                      }
+                    },
+                    role: "button",
+                    tabIndex: 0,
+                  },
+                }
+              : {})}
           >
             {/* Only compact previews clip: the main chat retains every line. */}
             <div
@@ -211,7 +223,7 @@ export const MessageBlock = memo(function MessageBlock({
                 {bubbleBody}
               </div>
             </div>
-          </div>
+          </ConversationMessage>
         )}
         {!showEditor ? (
           <span
@@ -228,16 +240,33 @@ export const MessageBlock = memo(function MessageBlock({
 
   if (!content && (streaming || (!sources?.length && !sourceStatus))) return null;
 
+  const profile =
+    assistantAgent?.id === (assistantAgentId ?? assistantAgent?.id) ? assistantAgent : undefined;
   return (
     <div
       className="group/msg message-role-row message-assistant-row flex w-1/2 min-w-0 items-start gap-2"
       data-message-row="assistant"
     >
       <AssistantAvatar agent={assistantAgent} agentId={assistantAgentId} streaming={streaming} />
-      <MessageWithHeader
+      <ConversationMessage
         data-message-role="assistant"
-        className="chat-message-bubble chat-message-surface"
-        author={assistantAgent?.name ?? "Modus"}
+        className="chat-message-bubble"
+        author={profile?.name || (assistantAgentId ? "Agent" : "Modus")}
+        time={streaming ? undefined : time}
+        status={
+          streaming ? (
+            <span role="status">
+              <WorkingText>Writing</WorkingText>
+            </span>
+          ) : null
+        }
+        footer={
+          content && !streaming ? (
+            <span className="copy-reveal pointer-events-none shrink-0 opacity-0 group-focus-within/msg:pointer-events-auto group-focus-within/msg:opacity-100 group-hover/msg:pointer-events-auto group-hover/msg:opacity-100 pointer-coarse:pointer-events-auto pointer-coarse:opacity-100">
+              <CopyButton label="Copy message" text={content} />
+            </span>
+          ) : null
+        }
       >
         {content ? (
           <MarkdownMessage
@@ -260,13 +289,7 @@ export const MessageBlock = memo(function MessageBlock({
             Run sources could not be loaded. Tool activity remains in the timeline.
           </div>
         ) : null}
-      </MessageWithHeader>
-      {/* Copy the raw markdown: revealed on hover or keyboard focus, always on touch. */}
-      {content && !streaming ? (
-        <span className="copy-reveal pointer-events-none shrink-0 self-end opacity-0 group-focus-within/msg:pointer-events-auto group-focus-within/msg:opacity-100 group-hover/msg:pointer-events-auto group-hover/msg:opacity-100 pointer-coarse:pointer-events-auto pointer-coarse:opacity-100">
-          <CopyButton label="Copy message" text={content} />
-        </span>
-      ) : null}
+      </ConversationMessage>
     </div>
   );
 });

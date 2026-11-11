@@ -15,9 +15,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  * "Effective alpha" = the element composited over every ancestor up to <html>,
  * i.e. how much of the window material (vibrancy / Mica) can show through it.
  */
-const CHROME = [process.env.CHROME_PATH, "google-chrome", "google-chrome-stable", "chromium"]
-  .filter((bin): bin is string => Boolean(bin))
-  .find((bin) => spawnSync(bin, ["--version"], { stdio: "ignore" }).status === 0);
+const CHROME =
+  process.env.CHROME_PATH ||
+  ["google-chrome", "google-chrome-stable", "chromium"].find(
+    (bin) => spawnSync(bin, ["--version"], { stdio: "ignore" }).status === 0,
+  );
 if (!CHROME && process.env.CI) throw new Error("D2 computed-style test needs Chrome on CI");
 
 /**
@@ -57,6 +59,10 @@ const SCENE = `
       <textarea class="bg-panel" data-settings-editor></textarea>
     </section>
   </main>
+  <div class="app-sidebar-slot" data-destination="settings" style="position:absolute">
+    <nav class="nav-rail app-context-sidebar app-sidebar-rail" data-overlay="false"></nav>
+    <nav class="nav-rail app-context-sidebar app-sidebar-rail" data-overlay="true"></nav>
+  </div>
 </div></div></div>`;
 const CANDIDATES = [
   "flex",
@@ -86,6 +92,10 @@ const CANDIDATES = [
 ];
 const PANELS = [".app-rail", ".app-context-sidebar", ".surface-main"];
 const CHROME_PARTS = [".app-rail", ".app-context-sidebar"];
+const SETTINGS_RAILS = [
+  '.app-sidebar-rail[data-overlay="false"]',
+  '.app-sidebar-rail[data-overlay="true"]',
+];
 const OVERLAYS = [".surface-raised", ".popup-chrome", ".pdf-page-chrome"];
 const CHAT_AVATARS = ["[data-user-avatar]", "[data-assistant-avatar]", "[data-technical-avatar]"];
 const CHAT_SURFACES = [
@@ -247,7 +257,7 @@ describe.skipIf(!CHROME)("D2 transparency modes in real computed styles (headles
         // Measure the settled palette, including the Composer's existing transition.
         getComputedStyle(document.querySelector('.composer-glass')).backgroundColor;
         await Promise.allSettled(document.getAnimations().map(animation => animation.finished));
-        return ${MEASURE}(${JSON.stringify([...PANELS, ...OVERLAYS, ...CHAT_SURFACES, ...CHAT_AVATARS, "[data-table-menu-card]", '[data-streamdown="table-wrapper"]', "[data-table-frame]", "[data-table-menu]", "[data-settings-sticky-footer]", ".chat-run-status", ".app-shell", "html"])});
+        return ${MEASURE}(${JSON.stringify([...PANELS, ...SETTINGS_RAILS, ...OVERLAYS, ...CHAT_SURFACES, ...CHAT_AVATARS, "[data-table-menu-card]", '[data-streamdown="table-wrapper"]', "[data-table-frame]", "[data-table-menu]", "[data-settings-sticky-footer]", ".chat-run-status", ".app-shell", "html"])});
       })()`,
       awaitPromise: true,
       returnByValue: true,
@@ -413,6 +423,18 @@ describe.skipIf(!CHROME)("D2 transparency modes in real computed styles (headles
       expect(m[".chat-run-status"]?.alpha).toBe(0);
       expect(m[".chat-run-status"]?.effective).toBe(m[".surface-main"]?.effective);
       expect(m[".chat-run-status"]?.backdrop).toBe("none");
+    }
+  });
+
+  it("keeps the Settings rail opaque when pinned or overlaid", async () => {
+    for (const theme of THEMES) {
+      for (const transparency of ["sidebar", "full"] as const) {
+        const m = await measure(theme, true, transparency);
+        for (const rail of SETTINGS_RAILS) {
+          expect(m[rail]?.alpha, `${theme} ${transparency} ${rail}`).toBe(1);
+          expect(m[rail]?.backdrop).toBe("none");
+        }
+      }
     }
   });
 

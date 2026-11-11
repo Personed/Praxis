@@ -151,7 +151,7 @@ describe("Home composer can send a first message with no session model", () => {
     const listbox = await screen.findByRole("listbox");
     await user.click(within(listbox).getByRole("option", { name: "Claude Sonnet" }));
     await waitFor(() => expect(send().disabled).toBe(false));
-    expect(screen.queryByTestId("home-effort-picker")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Choose effort" })).toBeNull();
     await user.click(send());
     await waitFor(() => expect(onSend).toHaveBeenCalledWith("hello", "anthropic/sonnet"));
   });
@@ -170,10 +170,11 @@ describe("Home composer can send a first message with no session model", () => {
     const user = userEvent.setup();
     const onSend = vi.fn();
     render(<Harness defaultModelId="openai/gpt-5" initialText="review this" onSend={onSend} />);
-    const effort = screen.getByTestId("home-effort-picker");
+    const effort = screen.getByRole("button", { name: "Choose effort" });
     expect(effort.textContent).toBe("medium");
     await user.click(effort);
-    await user.click(await screen.findByRole("menuitem", { name: "high" }));
+    expect(await screen.findByRole("slider", { name: "Effort" })).toBe(document.activeElement);
+    await user.keyboard("{End}");
     expect(effort.textContent).toBe("high");
     await user.click(send());
     await waitFor(() => expect(onSend).toHaveBeenCalledWith("review this", "openai/gpt-5", "high"));

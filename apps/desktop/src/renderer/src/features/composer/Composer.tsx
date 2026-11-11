@@ -31,7 +31,7 @@ import type {
 import { ComposerRunningSweep } from "../../components/ui/ComposerRunningSweep";
 import { ImageThumb } from "../../components/ui/ImageViewer";
 import { MenuRow } from "../../components/ui/MenuRow";
-import { SendStopIcon } from "../../components/ui/SendStopIcon";
+import PromptBar from "../../components/ui/react-bits/PromptBar";
 import { cn } from "../../lib/cn";
 import { ContextUsageRing, contextUsagePercent, formatUsagePercent } from "../../lib/contextUsage";
 import { composerImageChipMotion } from "../../lib/motion";
@@ -42,6 +42,7 @@ import { ContextMentionMenu } from "./ContextMentionMenu";
 import { contextItemKey } from "./composerTokens";
 import { COMPOSER_TOOLBAR_BREAKPOINTS, ComposerToolbarTierContext } from "./composerToolbarTier";
 import { MentionEditor, type MentionEditorHandle, type MentionEditorPart } from "./MentionEditor";
+import { type ComposerSelectors, usePromptBarModels } from "./SessionModelPicker";
 import { SlashMenu } from "./SlashMenu";
 import {
   type ComposerImage,
@@ -50,6 +51,10 @@ import {
 } from "./useComposerImages";
 import { type MentionRow, useComposerMentions } from "./useComposerMentions";
 import { type SlashActionItem, type SlashItem, useComposerSlash } from "./useComposerSlash";
+
+const ATTACHMENT_SOURCES = [
+  { key: "files", name: "Attach files", attach: true, icon: <IconPlus size={16} /> },
+];
 
 const COMPOSER_PLACEHOLDER = "What will you build with Modus?";
 
@@ -76,6 +81,7 @@ export type ComposerProps = {
    * branch picker.
    */
   branchControl?: ReactNode;
+  selectors?: ComposerSelectors;
   onContextChange(items: ContextItem[]): void;
   onSubmit(
     message: string,
@@ -192,6 +198,7 @@ export function Composer({
   isRunning = false,
   onAbort,
   branchControl,
+  selectors,
   onContextChange,
   onCompact,
   onSubmit,
@@ -202,6 +209,7 @@ export function Composer({
   onDraftChange,
 }: ComposerProps) {
   const isInlineEdit = Boolean(onCancel);
+  const promptBarModels = usePromptBarModels(models);
   const [uncontrolledDraft, setUncontrolledDraft] =
     useState<ComposerDraft>(createEmptyComposerDraft);
   const activeDraft = draft ?? uncontrolledDraft;
@@ -440,6 +448,7 @@ export function Composer({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+    if (isComposing || event.nativeEvent.isComposing) return;
     // Shift+Tab rotates Build and Plan modes.
     if (event.key === "Tab" && event.shiftKey && !slash.isOpen && !isOpen) {
       event.preventDefault();
@@ -588,208 +597,224 @@ export function Composer({
         <AnimatePresence>
           {isRunning ? <ComposerRunningSweep key="composer-running" /> : null}
         </AnimatePresence>
-        <div
-          className="relative z-10"
-          onCompositionEnd={() => setIsComposing(false)}
-          onCompositionStart={() => setIsComposing(true)}
-        >
-          {!hasText && !hasInlineTokens && !isComposing ? (
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 px-4 pt-3 text-md font-light text-fg-placeholder leading-normal"
-            >
-              {COMPOSER_PLACEHOLDER}
-            </div>
-          ) : null}
-          {/* One typing line + airy pad (top/bottom) — not a multi-line empty runway. */}
-          <MentionEditor
-            className="min-h-[calc(1lh+1.25rem)] px-4 pt-3 pb-2 text-md font-normal text-fg leading-normal"
-            contextItems={contextItems}
-            onChange={handleEditorChange}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            parts={activeDraft.parts}
-            ref={editorRef}
-            skills={selectedSkills}
-            value={value}
-          />
-          <ContextMentionMenu
-            activeIndex={activeIndex}
-            onHover={setActiveIndex}
-            onSelect={selectMentionRow}
-            rows={isOpen ? mentionRows : []}
-          />
-          {slash.isOpen ? (
-            <SlashMenu
-              activeIndex={slash.activeIndex}
-              items={slash.items}
-              onSelect={selectSlashItem}
-            />
-          ) : null}
-        </div>
-
-        {images.length > 0 ? (
-          <div className="flex flex-wrap gap-2 px-3 pt-1.5">
-            <AnimatePresence initial={false}>
-              {images.map((image) => (
-                <m.div
-                  animate={imageChipMotion.animate}
-                  className="composer-image-chip group/image relative rounded-xl has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus-ring/60"
-                  data-composer-image=""
-                  exit={imageChipMotion.exit}
-                  initial={imageChipMotion.initial}
-                  key={image.id}
-                  layout
-                  transition={imageChipMotion.transition}
-                >
-                  <ImageThumb
-                    alt={image.name}
-                    className="composer-image-thumb size-14 rounded-xl object-contain outline-none"
-                    onSaveEdited={(dataUrl) => updateImage(image.id, dataUrl)}
-                    src={image.dataUrl}
-                    title={image.name}
-                  />
-                  <button
-                    aria-label={`Remove ${image.name}`}
-                    className="composer-image-remove absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-fg-muted opacity-0 outline-none transition-[opacity,color,background-color] duration-(--motion-duration-fast) hover:text-fg focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-focus-ring/60 group-focus-within/image:opacity-100 group-hover/image:opacity-100"
-                    onClick={() => removeImage(image.id)}
-                    type="button"
-                  >
-                    <IconX size={ICON.xs} stroke={ICON_STROKE.xs} />
-                  </button>
-                </m.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        ) : null}
-
-        {/* L3c: the toolbar collapses by its own width (composerToolbarTier.ts), not the
-          viewport's: labels to icons, then secondary actions into "More actions". */}
         <ComposerToolbarTierContext.Provider value={toolbarTier}>
-          <div
-            className="flex min-w-0 items-center gap-1 px-3 pt-1.5 pb-2.5"
-            data-testid="composer-toolbar"
-            data-width-tier={toolbarTier}
-            ref={toolbarRef}
-          >
-            {toolbarOverflow ? (
-              <Menu.Root>
-                <Menu.Trigger
-                  aria-label="More actions"
-                  className="app-no-drag flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-subtle outline-none transition-colors hover:bg-hover hover:text-fg focus-visible:ring-1 focus-visible:ring-focus-ring/50 data-popup-open:bg-hover"
-                  data-testid="composer-overflow-trigger"
-                  title="More actions"
-                >
-                  <IconDots size={ICON.md} stroke={ICON_STROKE.md} />
-                </Menu.Trigger>
-                <Menu.Portal>
-                  <Menu.Positioner align="start" side="top" sideOffset={6}>
-                    <Menu.Popup
-                      className="origin-(--transform-origin) min-w-[184px] popup-chrome popup-motion p-1"
-                      data-testid="composer-overflow-menu"
-                    >
-                      <MenuRow
-                        icon={<IconPlus size={ICON.sm} stroke={ICON_STROKE.sm} />}
-                        onClick={() => fileInputRef.current?.click()}
+          <PromptBar
+            accessory={
+              images.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  <AnimatePresence initial={false}>
+                    {images.map((image) => (
+                      <m.div
+                        animate={imageChipMotion.animate}
+                        className="composer-image-chip group/image relative rounded-xl has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus-ring/60"
+                        data-composer-image=""
+                        exit={imageChipMotion.exit}
+                        initial={imageChipMotion.initial}
+                        key={image.id}
+                        layout
+                        transition={imageChipMotion.transition}
                       >
-                        Attach files
-                      </MenuRow>
-                    </Menu.Popup>
-                  </Menu.Positioner>
-                </Menu.Portal>
-              </Menu.Root>
-            ) : (
-              <button
-                aria-label="Attach files"
-                className="app-no-drag flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-subtle transition-colors hover:bg-hover hover:text-fg"
-                onClick={() => fileInputRef.current?.click()}
-                title="Attach files"
-                type="button"
+                        <ImageThumb
+                          alt={image.name}
+                          className="composer-image-thumb size-14 rounded-xl object-contain outline-none"
+                          onSaveEdited={(dataUrl) => updateImage(image.id, dataUrl)}
+                          src={image.dataUrl}
+                          title={image.name}
+                        />
+                        <button
+                          aria-label={`Remove ${image.name}`}
+                          className="composer-image-remove absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-fg-muted opacity-0 outline-none transition-[opacity,color,background-color] duration-(--motion-duration-fast) hover:text-fg focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-focus-ring/60 group-focus-within/image:opacity-100 group-hover/image:opacity-100"
+                          onClick={() => removeImage(image.id)}
+                          type="button"
+                        >
+                          <IconX size={ICON.xs} stroke={ICON_STROKE.xs} />
+                        </button>
+                      </m.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              ) : null
+            }
+            background="var(--modus-prompt-field)"
+            busy={isRunning}
+            canSend={hasContent && canSubmit && Boolean(model)}
+            className="modus-prompt-bar"
+            color="var(--modus-prompt-ink)"
+            commands={[]}
+            editor={
+              <div
+                className="relative z-10"
+                onCompositionEnd={() => setIsComposing(false)}
+                onCompositionStart={() => setIsComposing(true)}
               >
-                <IconPlus size={ICON.md} stroke={ICON_STROKE.md} />
-              </button>
-            )}
-            <input
-              accept="image/*"
-              className="hidden"
-              multiple
-              onChange={(event) => {
-                // Copy first: clearing `value` below empties the live FileList
-                // before the async reader gets past the first file.
-                const files = Array.from(event.target.files ?? []);
-                if (files.length > 0) {
-                  void addFiles(files);
-                }
-                event.target.value = "";
-              }}
-              ref={fileInputRef}
-              type="file"
-            />
-
-            {!isInlineEdit ? (
-              <>
-                <ModePill
-                  mode={mode}
-                  onCycle={() => setMode(cycleComposerMode(mode))}
-                  onExit={() => setMode("build")}
+                {!hasText && !hasInlineTokens && !isComposing ? (
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 top-0 text-md font-light text-fg-placeholder leading-normal"
+                  >
+                    {COMPOSER_PLACEHOLDER}
+                  </div>
+                ) : null}
+                <MentionEditor
+                  className="min-h-[1lh] text-md font-normal text-fg leading-normal"
+                  contextItems={contextItems}
+                  onChange={handleEditorChange}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
+                  parts={activeDraft.parts}
+                  ref={editorRef}
+                  skills={selectedSkills}
+                  value={value}
                 />
-                {branchControl}
-              </>
-            ) : null}
-
-            <div className="flex-1" />
-
-            {submitError ? (
-              <span className="min-w-0 truncate text-2xs text-danger" title={submitError}>
-                {submitError}
-              </span>
-            ) : null}
-
-            {!isInlineEdit ? (
-              <ContextUsageIndicator
-                {...(currentModel?.contextWindow
-                  ? { contextWindow: currentModel.contextWindow }
-                  : {})}
-                {...(contextUsage ? { usage: contextUsage } : {})}
-              />
-            ) : null}
-
-            {trailingActions}
-
-            {onCancel ? (
-              <button
-                aria-label="Cancel"
-                className="flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-subtle transition-colors hover:bg-hover hover:text-fg"
-                disabled={submitting}
-                onClick={onCancel}
-                type="button"
-              >
-                <IconX size={ICON.md} stroke={ICON_STROKE.md} />
-              </button>
-            ) : null}
-
-            {/* One control: arrow → square morph while the agent is running. */}
-            <button
-              aria-label={isRunning ? "Stop" : "Send"}
-              className="flex size-7 shrink-0 items-center justify-center rounded-[10px] bg-accent text-white shadow-[0_4px_14px_-4px_var(--color-accent)] transition-[background-color,box-shadow,transform] duration-(--motion-duration-base) hover:brightness-110 active:scale-[0.96] disabled:bg-chip-strong disabled:text-fg-faint disabled:shadow-none motion-reduce:transition-reduced-fade"
-              disabled={isRunning ? !onAbort : !hasContent || !canSubmit || submitting || !model}
-              onClick={() => {
-                if (isRunning) onAbort?.();
-                else send();
-              }}
-              type="button"
-            >
-              {submitting && !isRunning ? (
+                <ContextMentionMenu
+                  activeIndex={activeIndex}
+                  onHover={setActiveIndex}
+                  onSelect={selectMentionRow}
+                  rows={isOpen ? mentionRows : []}
+                />
+                {slash.isOpen ? (
+                  <SlashMenu
+                    activeIndex={slash.activeIndex}
+                    items={slash.items}
+                    onSelect={selectSlashItem}
+                  />
+                ) : null}
+              </div>
+            }
+            efforts={selectors?.efforts.map((option) => option.value) ?? []}
+            effortLabel={(value) =>
+              selectors?.efforts.find((option) => option.value === value)?.label ?? value
+            }
+            focusEditor={() => editorRef.current?.focus()}
+            models={selectors ? promptBarModels : []}
+            selectedModel={model}
+            selectedEffort={selectors?.effort ?? ""}
+            {...(selectors?.modelLabel ? { modelLabel: selectors.modelLabel } : {})}
+            {...(selectors?.disabledReason
+              ? { selectorsDisabledReason: selectors.disabledReason }
+              : {})}
+            {...(selectors
+              ? {
+                  onEffortChange: selectors.onEffortChange,
+                  onModelChange: selectors.onModelChange,
+                  selectorsDisabled: selectors.disabled ?? false,
+                }
+              : {})}
+            onSend={() => void send()}
+            {...(onAbort ? { onStop: onAbort } : {})}
+            sendDisabled={isRunning ? !onAbort : submitting}
+            sendIndicator={
+              submitting && !isRunning ? (
                 <IconLoader2
                   className="animate-spin motion-reduce:animate-pulse"
                   size={ICON.sm}
                   stroke={ICON_STROKE.sm}
                 />
-              ) : (
-                <SendStopIcon busy={isRunning} className="size-3.5" />
-              )}
-            </button>
-          </div>
+              ) : null
+            }
+            sources={toolbarOverflow ? [] : ATTACHMENT_SOURCES}
+            onAttach={() => {
+              fileInputRef.current?.click();
+              return undefined;
+            }}
+            attachControl={
+              toolbarOverflow ? (
+                <Menu.Root>
+                  <Menu.Trigger
+                    aria-label="More actions"
+                    className="app-no-drag flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-subtle outline-none transition-colors hover:bg-hover hover:text-fg focus-visible:ring-1 focus-visible:ring-focus-ring/50 data-popup-open:bg-hover"
+                    data-testid="composer-overflow-trigger"
+                    title="More actions"
+                  >
+                    <IconDots size={ICON.md} stroke={ICON_STROKE.md} />
+                  </Menu.Trigger>
+                  <Menu.Portal>
+                    <Menu.Positioner align="start" side="top" sideOffset={6}>
+                      <Menu.Popup
+                        className="origin-(--transform-origin) min-w-[184px] popup-chrome popup-motion p-1"
+                        data-testid="composer-overflow-menu"
+                      >
+                        <MenuRow
+                          icon={<IconPlus size={ICON.sm} stroke={ICON_STROKE.sm} />}
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          Attach files
+                        </MenuRow>
+                      </Menu.Popup>
+                    </Menu.Positioner>
+                  </Menu.Portal>
+                </Menu.Root>
+              ) : undefined
+            }
+            toolbar={
+              <>
+                <input
+                  accept="image/*"
+                  className="hidden"
+                  multiple
+                  onChange={(event) => {
+                    // Copy first: clearing `value` below empties the live FileList
+                    // before the async reader gets past the first file.
+                    const files = Array.from(event.target.files ?? []);
+                    if (files.length > 0) {
+                      void addFiles(files);
+                    }
+                    event.target.value = "";
+                  }}
+                  ref={fileInputRef}
+                  type="file"
+                />
+
+                {!isInlineEdit ? (
+                  <>
+                    <ModePill
+                      mode={mode}
+                      onCycle={() => setMode(cycleComposerMode(mode))}
+                      onExit={() => setMode("build")}
+                    />
+                    {branchControl}
+                  </>
+                ) : null}
+              </>
+            }
+            toolbarTrailing={
+              <>
+                {submitError ? (
+                  <span className="min-w-0 truncate text-2xs text-danger" title={submitError}>
+                    {submitError}
+                  </span>
+                ) : null}
+
+                {!isInlineEdit ? (
+                  <ContextUsageIndicator
+                    {...(currentModel?.contextWindow
+                      ? { contextWindow: currentModel.contextWindow }
+                      : {})}
+                    {...(contextUsage ? { usage: contextUsage } : {})}
+                  />
+                ) : null}
+
+                {trailingActions}
+
+                {onCancel ? (
+                  <button
+                    aria-label="Cancel"
+                    className="flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-subtle transition-colors hover:bg-hover hover:text-fg"
+                    disabled={submitting}
+                    onClick={onCancel}
+                    type="button"
+                  >
+                    <IconX size={ICON.md} stroke={ICON_STROKE.md} />
+                  </button>
+                ) : null}
+              </>
+            }
+            toolbarProps={{
+              "data-testid": "composer-toolbar",
+              "data-width-tier": toolbarTier,
+              ref: toolbarRef,
+            }}
+          />
         </ComposerToolbarTierContext.Provider>
         {footer ? (
           <div className="relative z-10 px-3 py-1.5" data-testid="composer-footer">

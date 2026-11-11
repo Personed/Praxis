@@ -56,7 +56,7 @@ export function GroupsMovedNotice({
   };
   return (
     <div
-      className="mx-6 mb-2 rounded-lg border border-hairline-strong bg-panel px-4 py-3 text-sm"
+      className="pointer-events-auto mx-6 mb-2 rounded-lg border border-hairline-strong bg-panel px-4 py-3 text-sm"
       data-testid="groups-moved-notice"
       role="status"
     >

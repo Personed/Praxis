@@ -466,13 +466,13 @@ describe("sidebar project and Agent navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Projects" }));
     await waitFor(() => expect(screen.queryByText("Dayz")).toBeNull());
     fireEvent.mouseLeave(nav);
-    await waitFor(() => expect(nav.getAttribute("data-expanded")).toBe("false"));
+    expect(nav.getAttribute("data-expanded")).toBe("false");
     fireEvent.mouseEnter(nav);
     expect(screen.queryByText("Dayz")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Projects" }));
     expect(await screen.findByText("Oi")).toBeTruthy();
     fireEvent.mouseLeave(nav);
-    await waitFor(() => expect(nav.getAttribute("data-expanded")).toBe("false"));
+    expect(nav.getAttribute("data-expanded")).toBe("false");
   });
 
   it.each([
@@ -638,7 +638,7 @@ describe("sidebar session drag and drop", () => {
     await waitFor(() => expect(nav.getAttribute("data-expanded")).toBe("false"));
     fireEvent.mouseEnter(nav);
     fireEvent.mouseLeave(nav);
-    await waitFor(() => expect(nav.getAttribute("data-expanded")).toBe("false"));
+    expect(nav.getAttribute("data-expanded")).toBe("false");
   });
 
   it("offers the same project transfer through the keyboard-accessible menu", async () => {
