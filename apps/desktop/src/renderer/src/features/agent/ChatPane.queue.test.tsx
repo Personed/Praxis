@@ -115,7 +115,7 @@ function mount(initialQueue: QueuedPromptItem[], options: { workspace?: boolean 
   });
   const hub = new AgentEventHub();
   const view = render(
-    <LazyMotion features={domMax} strict>
+    <LazyMotion features={domMax}>
       <ChatPane
         session={SESSION}
         hub={hub}
@@ -163,39 +163,38 @@ function mount(initialQueue: QueuedPromptItem[], options: { workspace?: boolean 
   return { view, hub, snapshot, removeQueued, listQueue, prompt, browserSubmit };
 }
 
+const queue = () => screen.queryByRole("region", { name: "Queued messages" });
 const rows = () =>
-  Array.from(document.querySelectorAll<HTMLElement>("[data-queued-prompt-id]")).map(
-    (row) => row.dataset.queuedPromptId,
-  );
+  Array.from(queue()?.querySelectorAll("li > p") ?? []).map((row) => row.textContent);
 
 describe("ChatPane visible queue", () => {
-  it("seeds the strip from main and follows queue.snapshot by id, in arrival order", async () => {
+  it("seeds the strip from main and follows queue.snapshots in arrival order", async () => {
     const { snapshot, listQueue } = mount([queued("a", "Then add a test")]);
-    await waitFor(() => expect(rows()).toEqual(["a"]));
+    await waitFor(() => expect(rows()).toEqual(["Then add a test"]));
     expect(listQueue).toHaveBeenCalledWith(SESSION.id);
 
     snapshot([queued("a", "Then add a test"), queued("b", "Also check the docs", 2)]);
-    await waitFor(() => expect(rows()).toEqual(["a", "b"]));
-    const strip = screen.getByTestId("queued-prompt-strip");
-    expect(within(strip).getByTestId("queued-prompt-images").textContent).toBe("2");
+    await waitFor(() => expect(rows()).toEqual(["Then add a test", "Also check the docs"]));
+    const strip = screen.getByRole("region", { name: "Queued messages" });
+    expect(within(strip).getByText("2 images")).toBeTruthy();
 
     // "a" was sent: it leaves the strip, "b" stays.
     snapshot([queued("b", "Also check the docs", 2)]);
-    await waitFor(() => expect(rows()).toEqual(["b"]));
+    await waitFor(() => expect(rows()).toEqual(["Also check the docs"]));
     snapshot([]);
-    await waitFor(() => expect(screen.queryByTestId("queued-prompt-strip")).toBeNull());
+    await waitFor(() => expect(queue()).toBeNull());
   });
 
   it("remove asks the runtime to drop that id", async () => {
     const { removeQueued } = mount([queued("a", "Then add a test"), queued("b", "Drop me")]);
-    await waitFor(() => expect(rows()).toEqual(["a", "b"]));
+    await waitFor(() => expect(rows()).toEqual(["Then add a test", "Drop me"]));
     fireEvent.click(screen.getByRole("button", { name: "Remove queued message: Drop me" }));
     expect(removeQueued).toHaveBeenCalledWith({ sessionId: SESSION.id, id: "b" });
   });
 
   it("shows a queued prompt once: in the strip while queued, in chat only after it is sent", async () => {
     const { hub, snapshot } = mount([queued("a", "Then add a test")]);
-    await waitFor(() => expect(rows()).toEqual(["a"]));
+    await waitFor(() => expect(rows()).toEqual(["Then add a test"]));
     const transcriptCount = () =>
       Array.from(document.querySelectorAll('[data-message-role="user"]')).filter((node) =>
         node.textContent?.includes("Then add a test"),
@@ -230,7 +229,7 @@ describe("ChatPane visible queue", () => {
     });
     snapshot([]);
     await waitFor(() => expect(transcriptCount()).toBe(1));
-    await waitFor(() => expect(screen.queryByTestId("queued-prompt-strip")).toBeNull());
+    await waitFor(() => expect(queue()).toBeNull());
   });
 
   it("a prompt sent while the agent runs gets no optimistic chat bubble", async () => {

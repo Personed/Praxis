@@ -22,6 +22,7 @@ import type {
   PromptImageAttachment,
   SkillSelection,
 } from "../../../../shared/contracts";
+import { MessageWithHeader } from "../../components/conversation/c-message-3";
 import { CopyButton } from "../../components/ui/CopyButton";
 import { ImageThumb } from "../../components/ui/ImageViewer";
 import { ModusBot } from "../../components/ui/ModusBot";
@@ -233,9 +234,10 @@ export const MessageBlock = memo(function MessageBlock({
       data-message-row="assistant"
     >
       <AssistantAvatar agent={assistantAgent} agentId={assistantAgentId} streaming={streaming} />
-      <div
-        className="chat-message-bubble chat-message-surface text-xs leading-relaxed"
+      <MessageWithHeader
         data-message-role="assistant"
+        className="chat-message-bubble chat-message-surface"
+        author={assistantAgent?.name ?? "Modus"}
       >
         {content ? (
           <MarkdownMessage
@@ -258,7 +260,7 @@ export const MessageBlock = memo(function MessageBlock({
             Run sources could not be loaded. Tool activity remains in the timeline.
           </div>
         ) : null}
-      </div>
+      </MessageWithHeader>
       {/* Copy the raw markdown: revealed on hover or keyboard focus, always on touch. */}
       {content && !streaming ? (
         <span className="copy-reveal pointer-events-none shrink-0 self-end opacity-0 group-focus-within/msg:pointer-events-auto group-focus-within/msg:opacity-100 group-hover/msg:pointer-events-auto group-hover/msg:opacity-100 pointer-coarse:pointer-events-auto pointer-coarse:opacity-100">

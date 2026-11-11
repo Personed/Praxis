@@ -1,0 +1,108 @@
+{
+  "runtime": "GZDoom g4.11.3 / tomb-engine",
+  "upstreamCommit": "6c735315b8ac1b1dd6646ac78c46bbbdbb775a5c",
+  "source": "https://github.com/mungus43/tomb-engine/tree/6c735315b8ac1b1dd6646ac78c46bbbdbb775a5c",
+  "game": "DOOM shareware 1.9, episode 1",
+  "files": [
+    {
+      "path": "game/DOOM1.WAD",
+      "bytes": 4196020,
+      "sha256": "1d7d43be501e67d927e415e0b8f3e29c3bf33075e859721816f652a526cac771"
+    },
+    {
+      "path": "game/doom19s-original.zip",
+      "bytes": 2450688,
+      "sha256": "cacf0142b31ca1af00796b4a0339e07992ac5f21bc3f81e7532fe1b5e1b486e6"
+    },
+    {
+      "path": "game/ORDER.FRM",
+      "bytes": 4617,
+      "sha256": "a7fa68a0021b3d04abd781e74175511a1a96d923c544fce19805ea5a9696df86"
+    },
+    {
+      "path": "game/poster-wide.png",
+      "bytes": 60033,
+      "sha256": "8a964d117d8dc179363df2ab79a74eaf62d5f03c143c42f65da41bc964f65c43"
+    },
+    {
+      "path": "game/README.TXT",
+      "bytes": 21631,
+      "sha256": "17878ebe5ca179de7ec2cc90bbabbc922ab69924118be168a25f8d317f65a2ff"
+    },
+    {
+      "path": "gzdoom/brightmaps.pk3",
+      "bytes": 246072,
+      "sha256": "7232197c7d1edae8baa73bf3a3856fafb2aaf0518e3dac75ab2fe54de3838ebb"
+    },
+    {
+      "path": "gzdoom/engine.worker.js",
+      "bytes": 37663,
+      "sha256": "274a56d9f1cae08354d9553e39931c466be91bee77b1ffa2864fb6dec351c872"
+    },
+    {
+      "path": "gzdoom/game_support.pk3",
+      "bytes": 2354603,
+      "sha256": "5f14ed8cabc76ec955517f3473bd7e8853bdf2c11f7407326e7cce84aa6c6154"
+    },
+    {
+      "path": "gzdoom/game_widescreen_gfx.pk3",
+      "bytes": 5565898,
+      "sha256": "133342060454e78c3a623e539cbeed128fc893daabe4bc66b03810aea560ac9c"
+    },
+    {
+      "path": "gzdoom/gzdoom.js",
+      "bytes": 1735829,
+      "sha256": "531cbdeab47f4f61bb297ecea2547a145727a00e531347e6493b45fa7c3a862f"
+    },
+    {
+      "path": "gzdoom/gzdoom.pk3",
+      "bytes": 2569170,
+      "sha256": "d242ae9470f1a6409f38c91fb8b600bfba3aa89cc92b682d844d5aba55d06272"
+    },
+    {
+      "path": "gzdoom/gzdoom.wasm",
+      "bytes": 8169518,
+      "sha256": "d46b5a348ca041090467aaa376c4e36a4228476c2a30e66ca564c1cf3516c477"
+    },
+    {
+      "path": "gzdoom/lights.pk3",
+      "bytes": 23677,
+      "sha256": "daf901148e0a4ef9692d1f14c1481dabe2be8cbf2489b895619cc0b03d3ae6bb"
+    },
+    {
+      "path": "gzdoom/LOCAL-CHANGES.md",
+      "bytes": 1814,
+      "sha256": "d9669c6ece5d4dbe2cc98f66c53fcad25c855436bcd8f70ad0f0cafae29d8711"
+    },
+    {
+      "path": "gzdoom/nexo.worker.js",
+      "bytes": 2689,
+      "sha256": "239b066027e553279e2674669b6ecfcf38fba566f42c579141f86b75313fb763"
+    },
+    {
+      "path": "gzdoom/UPSTREAM-build.ps1",
+      "bytes": 13785,
+      "sha256": "84b992660136f15977f3bd72c1df278f61f09602ef01229b41a85f0ca0d3813f"
+    },
+    {
+      "path": "gzdoom/upstream-commit.txt",
+      "bytes": 42,
+      "sha256": "518ba9885df43ce4f0268c86fc3dde3f9b3c37509518495eef63ed9abb09f434"
+    },
+    {
+      "path": "gzdoom/UPSTREAM-LICENSE",
+      "bytes": 35147,
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+    },
+    {
+      "path": "gzdoom/UPSTREAM-PATCH_INVENTORY.md",
+      "bytes": 12522,
+      "sha256": "e6f080482ed16f453b5e92b841fd0ed66915a98e89e70872ab45a25323c7ad08"
+    },
+    {
+      "path": "gzdoom/UPSTREAM-README.md",
+      "bytes": 37193,
+      "sha256": "6a1ae362827c589440bd4c7430c9664a651c8bbb9bac7cc87210694fc4903a13"
+    }
+  ]
+}

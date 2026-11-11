@@ -111,6 +111,7 @@ export type AgentSessionInfo = {
   model?: string;
   piSessionId?: string;
   piSessionFile?: string;
+  thinkingVariant?: string | undefined;
   parentSessionId?: string;
   subagentTask?: string;
   subagentType?: string;

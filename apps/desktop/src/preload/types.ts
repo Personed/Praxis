@@ -255,6 +255,7 @@ export type ModusApi = {
       cwd: string;
       title: string;
       model?: string;
+      thinkingVariant?: string;
     }): Promise<AgentSessionInfo>;
     list(input?: { includeSessionId?: string }): Promise<AgentSessionInfo[]>;
     listArchived(workspaceId: string): Promise<AgentSessionInfo[]>;

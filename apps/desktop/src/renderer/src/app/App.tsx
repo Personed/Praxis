@@ -28,7 +28,6 @@ import type {
   WorkspaceInfo,
 } from "../../../shared/contracts";
 import { shellText } from "../../../shared/shell-text";
-import { HomeBackground } from "../components/background/HomeBackground";
 import { SIDEBAR_MIN_WIDTH, SIDEBAR_TRANSITION, Sidebar } from "../components/Sidebar";
 import type { PrimaryDestination } from "../components/shell/AppRail";
 import { AppShell } from "../components/shell/AppShell";
@@ -69,6 +68,7 @@ import { AutomationsPage } from "../features/automations/AutomationsPage";
 import { type ComposerDraft, createEmptyComposerDraft } from "../features/composer/Composer";
 import { contextItemKey } from "../features/composer/composerTokens";
 import { HomeComposer } from "../features/composer/HomeComposer";
+import { DoomHome } from "../features/doom/DoomHome";
 import { BranchSwitcher } from "../features/git/BranchSwitcher";
 import { INSPECTOR_MIN_WIDTH } from "../features/inspector/inspector-layout";
 import { normalizePlan } from "../features/plan/planState";
@@ -211,6 +211,7 @@ export function App() {
   // Pinned open (300px) vs the 60px hover rail. Default is the rail; the
   // user's pin choice is remembered across launches.
   const [sidebarOpen, setSidebarOpen] = useState(readSidebarPinned);
+  const [homeSidebarOpen, setHomeSidebarOpen] = useState(false);
   useEffect(() => {
     writeSidebarPinned(sidebarOpen);
   }, [sidebarOpen]);
@@ -668,6 +669,7 @@ export function App() {
   async function createSession(
     workspace: WorkspaceInfo | null,
     modelOverride?: string,
+    thinkingVariant?: string,
   ): Promise<AgentSessionInfo | null> {
     const chatModel = modelOverride || model;
     if (!chatModel) {
@@ -681,7 +683,8 @@ export function App() {
       const session = await window.modus.agent.create({
         workspaceId: target.id,
         cwd: target.rootPath,
-        ...(chatModel ? { model: chatModel } : {}),
+        model: chatModel,
+        ...(thinkingVariant ? { thinkingVariant } : {}),
         title: "New chat",
       });
       hubRef.current.prepare(session.id);
@@ -748,11 +751,6 @@ export function App() {
     setInspectorTab("changes");
     setInspectorOpen(true);
   }
-
-  const openActivity = useCallback(() => {
-    setInspectorTab("activity");
-    setInspectorOpen(true);
-  }, []);
 
   const rememberActivePlan = useCallback(
     (plan: PlanRef) => {
@@ -977,11 +975,12 @@ export function App() {
     attachments?: PromptImageAttachment[],
     skills?: SkillSelection[],
     mode?: AgentMode,
+    thinkingVariant?: string,
   ): Promise<void> {
     if (!message.trim()) {
       return;
     }
-    const session = await createSession(activeWorkspace, heroModel);
+    const session = await createSession(activeWorkspace, heroModel, thinkingVariant);
     if (!session) {
       setSessionCreateError(undefined);
       throw new Error("Could not create the chat session. Your message is still in the composer.");
@@ -1072,8 +1071,15 @@ export function App() {
     visibleSession?.readOnly === true,
     window.modus?.agents.migratedTranscript,
   );
+  const isDoomHome = primaryNavigation.active === "direct-messages" && !visibleSession;
   const isMac = window.modus?.app.platform === "darwin";
-  const toggleSidebar = useCallback(() => setSidebarOpen((open) => !open), []);
+  const toggleSidebar = useCallback(() => {
+    if (isDoomHome) setHomeSidebarOpen((open) => !open);
+    else setSidebarOpen((open) => !open);
+  }, [isDoomHome]);
+  useEffect(() => {
+    if (!isDoomHome) setHomeSidebarOpen(false);
+  }, [isDoomHome]);
   useSidebarToggleShortcut(toggleSidebar, isMac);
 
   useEffect(() => {
@@ -1186,7 +1192,7 @@ export function App() {
   }, []);
 
   return (
-    <LazyMotion features={domMax} strict>
+    <LazyMotion features={domMax}>
       <TooltipProvider>
         <NativeSurfaceProvider>
           <ImageViewerProvider>
@@ -1200,89 +1206,94 @@ export function App() {
                   className="app-layout-row surface-app flex min-h-0 min-w-0 flex-1"
                   ref={layoutRowRef}
                   style={{
-                    gap: WORKSPACE_GUTTER,
+                    gap: isDoomHome ? 0 : WORKSPACE_GUTTER,
                     paddingTop: 0,
-                    paddingRight: WORKSPACE_GUTTER,
-                    paddingBottom: WORKSPACE_GUTTER,
+                    paddingRight: isDoomHome ? 0 : WORKSPACE_GUTTER,
+                    paddingBottom: isDoomHome ? 0 : WORKSPACE_GUTTER,
                   }}
                 >
-                  <AppSidebar
-                    active={primaryNavigation.active}
-                    beforeProjects={
-                      !settingsOpen ? (
-                        <div
-                          className="scroll-thin max-h-[35vh] shrink-0 overflow-y-auto"
-                          data-sidebar-pinned-slot=""
-                          ref={setSidebarPinnedSlot}
-                        />
-                      ) : null
-                    }
-                    canCreateSession={canCreateSession}
-                    onNavigate={(destination) => {
-                      if (destination === "settings") openSettings();
-                      else {
-                        setProjectsExpanded(true);
-                        navigateToPrimary(destination);
-                      }
-                    }}
-                    onNewMessage={() => openNewChat()}
-                    onNewProfile={() => void openNewProfile()}
-                    onOpenWorkspace={() => void openWorkspace()}
-                    onPinnedChange={setSidebarOpen}
-                    pinned={responsiveSidebarOpen}
-                    trafficLightClearance={isMac}
+                  <div
+                    hidden={isDoomHome && !homeSidebarOpen}
+                    className={isDoomHome ? "doom-home-sidebar-overlay" : "contents"}
                   >
-                    {settingsOpen ? (
-                      <div
-                        className="flex min-h-0 flex-1 flex-col"
-                        data-settings-nav-slot=""
-                        ref={setSettingsNavSlot}
-                      />
-                    ) : (
-                      <Sidebar
-                        agents={sidebarAgents}
-                        embedded
-                        chatsExpanded={chatsExpanded}
-                        pinnedContainer={sidebarPinnedSlot}
-                        projectsExpanded={projectsExpanded}
-                        onToggleChats={() => setChatsExpanded((expanded) => !expanded)}
-                        onExpandChats={() => setChatsExpanded(true)}
-                        onToggleProjects={() => setProjectsExpanded((expanded) => !expanded)}
-                        section="direct-messages"
-                        activityBySession={activityBySession}
-                        agentSessions={rootSessions}
-                        canCreateSession={canCreateSession}
-                        onArchiveSession={(session) => void archiveSession(session)}
-                        onDeleteSession={(session) => void deleteSession(session)}
-                        onListArchivedSessions={(workspaceId) =>
-                          window.modus.agent.listArchived(workspaceId)
+                    <AppSidebar
+                      active={primaryNavigation.active}
+                      beforeProjects={
+                        !settingsOpen ? (
+                          <div
+                            className="scroll-thin max-h-[35vh] shrink-0 overflow-y-auto"
+                            data-sidebar-pinned-slot=""
+                            ref={setSidebarPinnedSlot}
+                          />
+                        ) : null
+                      }
+                      canCreateSession={canCreateSession}
+                      onNavigate={(destination) => {
+                        if (destination === "settings") openSettings();
+                        else {
+                          setProjectsExpanded(true);
+                          navigateToPrimary(destination);
                         }
-                        onPinProject={(id, pinned) => void pinProject(id, pinned)}
-                        onPinSession={(session, pinned) => void pinSession(session, pinned)}
-                        onMoveSession={moveSession}
-                        onRenameSession={(id, title) => void renameSession(id, title)}
-                        onEditAgentProfile={(agentId) => void openEditProfile(agentId)}
-                        onRenameProject={(id, displayName) => void renameProject(id, displayName)}
-                        onArchiveProjectChats={(id) => void archiveProjectChats(id)}
-                        onDeleteProjectChats={(id) => void deleteProjectChats(id)}
-                        onRemoveProject={(id) => void removeProject(id)}
-                        onRestoreSession={(session) => void restoreSession(session)}
-                        onRevealProject={(id) => void revealProject(id)}
-                        onNewSession={() => openNewChat()}
-                        onNewWorkspaceSession={(workspace) => openNewChat(workspace)}
-                        onOpenWorkspace={() => void openWorkspace()}
-                        onOpenSettings={() => openSettings()}
-                        onSelectSession={selectSession}
-                        onWidthChange={setSidebarWidth}
-                        activeSessionId={activeSessionId}
-                        maxWidth={sidebarMaxWidth}
-                        open={responsiveSidebarOpen}
-                        width={sidebarWidth}
-                        workspaces={workspaces}
-                        onNewProfile={() => void openNewProfile()}
-                      />
-                    )}
-                  </AppSidebar>
+                      }}
+                      onNewMessage={() => openNewChat()}
+                      onNewProfile={() => void openNewProfile()}
+                      onOpenWorkspace={() => void openWorkspace()}
+                      onPinnedChange={isDoomHome ? setHomeSidebarOpen : setSidebarOpen}
+                      pinned={isDoomHome || responsiveSidebarOpen}
+                      trafficLightClearance={isMac}
+                    >
+                      {settingsOpen ? (
+                        <div
+                          className="flex min-h-0 flex-1 flex-col"
+                          data-settings-nav-slot=""
+                          ref={setSettingsNavSlot}
+                        />
+                      ) : (
+                        <Sidebar
+                          agents={sidebarAgents}
+                          embedded
+                          chatsExpanded={chatsExpanded}
+                          pinnedContainer={sidebarPinnedSlot}
+                          projectsExpanded={projectsExpanded}
+                          onToggleChats={() => setChatsExpanded((expanded) => !expanded)}
+                          onExpandChats={() => setChatsExpanded(true)}
+                          onToggleProjects={() => setProjectsExpanded((expanded) => !expanded)}
+                          section="direct-messages"
+                          activityBySession={activityBySession}
+                          agentSessions={rootSessions}
+                          canCreateSession={canCreateSession}
+                          onArchiveSession={(session) => void archiveSession(session)}
+                          onDeleteSession={(session) => void deleteSession(session)}
+                          onListArchivedSessions={(workspaceId) =>
+                            window.modus.agent.listArchived(workspaceId)
+                          }
+                          onPinProject={(id, pinned) => void pinProject(id, pinned)}
+                          onPinSession={(session, pinned) => void pinSession(session, pinned)}
+                          onMoveSession={moveSession}
+                          onRenameSession={(id, title) => void renameSession(id, title)}
+                          onEditAgentProfile={(agentId) => void openEditProfile(agentId)}
+                          onRenameProject={(id, displayName) => void renameProject(id, displayName)}
+                          onArchiveProjectChats={(id) => void archiveProjectChats(id)}
+                          onDeleteProjectChats={(id) => void deleteProjectChats(id)}
+                          onRemoveProject={(id) => void removeProject(id)}
+                          onRestoreSession={(session) => void restoreSession(session)}
+                          onRevealProject={(id) => void revealProject(id)}
+                          onNewSession={() => openNewChat()}
+                          onNewWorkspaceSession={(workspace) => openNewChat(workspace)}
+                          onOpenWorkspace={() => void openWorkspace()}
+                          onOpenSettings={() => openSettings()}
+                          onSelectSession={selectSession}
+                          onWidthChange={setSidebarWidth}
+                          activeSessionId={activeSessionId}
+                          maxWidth={sidebarMaxWidth}
+                          open={isDoomHome || responsiveSidebarOpen}
+                          width={sidebarWidth}
+                          workspaces={workspaces}
+                          onNewProfile={() => void openNewProfile()}
+                        />
+                      )}
+                    </AppSidebar>
+                  </div>
                   {settingsOpen ? (
                     <div
                       className="surface-main flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-b-lg"
@@ -1369,7 +1380,10 @@ export function App() {
 
                       <MainSurface
                         data-shell-layer="main-surface"
-                        className="surface-main relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-b-lg border border-hairline-strong border-t-0"
+                        className={cn(
+                          "surface-main relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
+                          !isDoomHome && "rounded-b-lg border border-hairline-strong border-t-0",
+                        )}
                         layout={!reduceMotion}
                         layoutDependency={responsiveSidebarOpen}
                         transition={{ layout: SIDEBAR_TRANSITION }}
@@ -1378,7 +1392,9 @@ export function App() {
                           data-width-tier={topBarTier}
                           ref={topBarRef}
                           className={cn(
-                            "toolbar-row relative z-10 flex shrink-0 items-center pr-3 pl-1",
+                            isDoomHome
+                              ? "hidden"
+                              : "toolbar-row relative z-10 flex shrink-0 items-center pr-3 pl-1",
                             (isMac || windowChrome === "windows-overlay") && "app-drag",
                             windowChrome === "windows-overlay" && "pr-[138px]",
                           )}
@@ -1393,20 +1409,33 @@ export function App() {
                                 triggerClassName="app-no-drag flex h-7 min-w-0 max-w-[190px] items-center gap-1.5 rounded-md px-2 text-xs text-fg-subtle transition-colors hover:bg-hover hover:text-fg"
                               />
                             ) : null}
-                            {visibleSession ? (
-                              <SessionTitlePopover
-                                branch={branch}
-                                contextUsage={contextUsageBySession[visibleSession.id]}
-                                modelId={visibleSession.model ?? model}
-                                models={models}
-                                session={visibleSession}
-                                tier={topBarTier}
-                                workspace={
-                                  workspaceById.get(visibleSession.workspaceId) ?? activeWorkspace
-                                }
-                              />
-                            ) : null}
                           </div>
+                          {visibleSession ? (
+                            <div
+                              className={cn(
+                                "pointer-events-none absolute inset-y-0 flex items-center justify-center",
+                                windowChrome !== "windows-overlay"
+                                  ? "inset-x-12"
+                                  : topBarTier === "sm"
+                                    ? "right-[176px] left-12"
+                                    : "inset-x-[176px]",
+                              )}
+                            >
+                              <div className="pointer-events-auto flex min-w-0 max-w-full">
+                                <SessionTitlePopover
+                                  branch={branch}
+                                  contextUsage={contextUsageBySession[visibleSession.id]}
+                                  modelId={visibleSession.model ?? model}
+                                  models={models}
+                                  session={visibleSession}
+                                  tier={topBarTier}
+                                  workspace={
+                                    workspaceById.get(visibleSession.workspaceId) ?? activeWorkspace
+                                  }
+                                />
+                              </div>
+                            </div>
+                          ) : null}
                           <div className={cn("flex h-full items-center justify-end", "flex-1")}>
                             <div className="pr-2">
                               <HeaderActions
@@ -1485,7 +1514,6 @@ export function App() {
                                       void updateModelThinking(next, thinkingVariant)
                                     }
                                     onOpenReview={openReview}
-                                    onOpenActivity={openActivity}
                                     onComposerDraftChange={(update) =>
                                       updateSessionComposerDraft(visibleSession.id, update)
                                     }
@@ -1525,14 +1553,17 @@ export function App() {
                           ) : (
                             <m.div
                               animate={{ opacity: 1, y: 0 }}
-                              className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden px-6"
+                              className="doom-home-layout flex min-h-0 flex-1 flex-col overflow-hidden"
                               exit={{ opacity: 0, y: motionOffset(-3, reduceMotion) }}
                               initial={{ opacity: 0, y: motionOffset(4, reduceMotion) }}
                               key="hero"
                               transition={swapTransition(tween("fast"), reduceMotion)}
                             >
-                              <HomeBackground />
-                              <div className="relative z-10 w-full max-w-[680px] -translate-y-4">
+                              <DoomHome
+                                sidebarOpen={homeSidebarOpen}
+                                onToggleSidebar={toggleSidebar}
+                              />
+                              <div className="doom-home-composer relative z-10" data-home-composer>
                                 <HomeComposer
                                   canSubmit={canCreateSession}
                                   contextItems={heroContextItems}
@@ -1540,11 +1571,20 @@ export function App() {
                                   draft={heroDraft}
                                   onDraftChange={setHeroDraft}
                                   footer={
-                                    <HeroEnvironmentTray
-                                      branch={branch}
-                                      cwd={activeCwd}
-                                      onError={setSessionCreateError}
-                                    />
+                                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                      <HeroEnvironmentTray
+                                        branch={branch}
+                                        cwd={activeCwd}
+                                        onError={setSessionCreateError}
+                                      />
+                                      <WorkspaceMenu
+                                        activeWorkspace={activeWorkspace}
+                                        workspaces={workspaces}
+                                        onSelect={openNewChat}
+                                        onOpenFolder={() => void openWorkspace()}
+                                        triggerClassName={HERO_ENVIRONMENT_TRIGGER_CLASS}
+                                      />
+                                    </div>
                                   }
                                   defaultModelId={model}
                                   heroModel={heroModel}
@@ -1560,6 +1600,7 @@ export function App() {
                                     attachments,
                                     skills,
                                     mode,
+                                    thinkingVariant,
                                   ) =>
                                     submitHeroPrompt(
                                       message,
@@ -1568,6 +1609,7 @@ export function App() {
                                       attachments,
                                       skills,
                                       mode,
+                                      thinkingVariant,
                                     )
                                   }
                                   workspaceId={activeWorkspace?.id}
@@ -1578,17 +1620,8 @@ export function App() {
                         </AnimatePresence>
                       </MainSurface>
 
-                      {responsiveInspectorOpen ? (
-                        <Suspense
-                          fallback={
-                            <div
-                              className="surface-main flex min-h-0 min-w-0 shrink-0 overflow-hidden rounded-b-lg border border-hairline-strong border-t-0"
-                              style={{ width: inspectorWidth }}
-                            >
-                              <ModusLoadingFallback />
-                            </div>
-                          }
-                        >
+                      {showInspectorForRoute ? (
+                        <Suspense fallback={null}>
                           <Inspector
                             assistantAgent={sidebarAgents.find(
                               (agent) => agent.id === activeSession?.agentId,
@@ -1623,7 +1656,7 @@ export function App() {
                             revealLine={filesRevealLine}
                             revealPath={filesRevealPath}
                             revealTerminalId={terminalRevealId}
-                            open={inspectorOpen}
+                            open={responsiveInspectorOpen}
                             {...(activeSession && activePlanBySession[activeSession.id]
                               ? { plan: activePlanBySession[activeSession.id] }
                               : {})}

@@ -66,7 +66,7 @@ describe("1:1 session top bar responsive (L3c)", () => {
     const title = screen.getByTestId("session-title-trigger");
     expect(title.getAttribute("title")).toBe(SESSION.title);
     expect(title.className).toContain("max-w-44");
-    expect(screen.getByTestId("session-title-text").className).toContain("truncate-fade");
+    expect(screen.getByTestId("session-title-text").classList.contains("truncate")).toBe(true);
     expect(screen.queryByRole("button", { name: "Environment" })).toBeNull();
     expect(screen.getByRole("button", { name: "Show right sidebar" })).toBeTruthy();
   });

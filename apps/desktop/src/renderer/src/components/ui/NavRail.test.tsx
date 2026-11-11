@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { domMax, LazyMotion } from "motion/react";
 import { useState } from "react";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
@@ -63,7 +63,7 @@ function renderRail({ pinned = false, onSelect = vi.fn() } = {}) {
 }
 
 describe("NavRail", () => {
-  it("expands while the pointer is over an unpinned rail and collapses when it leaves", () => {
+  it("expands while the pointer is over an unpinned rail and collapses after the pointer leaves", async () => {
     const { nav } = renderRail();
     expect(nav.getAttribute("data-expanded")).toBe("false");
     expect(nav.getAttribute("data-overlay")).toBe("false");
@@ -75,8 +75,24 @@ describe("NavRail", () => {
     expect(nav.className).toContain("absolute");
     expect(screen.getByTestId("expanded-content")).toBeTruthy();
     fireEvent.mouseLeave(nav);
-    expect(nav.getAttribute("data-expanded")).toBe("false");
+    expect(nav.getAttribute("data-expanded")).toBe("true");
+    await waitFor(() => expect(nav.getAttribute("data-expanded")).toBe("false"));
     expect(screen.queryByTestId("expanded-content")).toBeNull();
+  });
+
+  it("cancels hover collapse when the pointer returns during the grace period", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const { nav } = renderRail();
+      fireEvent.mouseEnter(nav);
+      fireEvent.mouseLeave(nav);
+      act(() => vi.advanceTimersByTime(150));
+      fireEvent.mouseEnter(nav);
+      act(() => vi.advanceTimersByTime(500));
+      expect(nav.getAttribute("data-expanded")).toBe("true");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("stays expanded and in the layout when pinned", () => {
@@ -111,7 +127,7 @@ describe("NavRail", () => {
     expect(nav.getAttribute("data-expanded")).toBe("false");
   });
 
-  it("does not stay open for focus left behind by a click once the pointer leaves", () => {
+  it("does not stay open for focus left behind by a click once the pointer leaves", async () => {
     const { nav, onSelect } = renderRail();
     const item = screen.getByRole("button", { name: "New message" });
     fireEvent.mouseEnter(nav);
@@ -120,7 +136,7 @@ describe("NavRail", () => {
     fireEvent.click(item);
     expect(onSelect).toHaveBeenCalledOnce();
     fireEvent.mouseLeave(nav);
-    expect(nav.getAttribute("data-expanded")).toBe("false");
+    await waitFor(() => expect(nav.getAttribute("data-expanded")).toBe("false"));
   });
 
   it("keeps the rail expanded while a row menu holds it, then releases", () => {
