@@ -1,0 +1,29 @@
+DOOM integration provenance
+===========================
+
+Engine: GZDoom g4.11.3 compiled to WebAssembly by the tomb-engine browser port,
+upstream commit 6c735315b8ac1b1dd6646ac78c46bbbdbb775a5c.
+
+- Port sources: https://github.com/mungus43/tomb-engine/tree/6c735315b8ac1b1dd6646ac78c46bbbdbb775a5c
+- GZDoom sources: https://github.com/ZDoom/gzdoom/tree/g4.11.3
+- License: GPL-3.0 (full text in doom-gzdoom-GPL-3.0.txt and in the shipped
+  app assets at doom/gzdoom/UPSTREAM-LICENSE)
+- Build recipe: doom/gzdoom/UPSTREAM-build.ps1
+- Local modifications against the upstream binaries: doom/gzdoom/LOCAL-CHANGES.md
+- Patch inventory: doom/gzdoom/UPSTREAM-PATCH_INVENTORY.md
+
+Doom game data
+--------------
+The bundled DOOM1.WAD is the original shareware v1.9 release. Copyright id
+Software / ZeniMax Media Inc. It is game data, not covered by the GPL that
+applies to the engine source. The original distribution notices ship unmodified
+at doom/game/README.TXT and the untouched archive at doom/game/doom19s-original.zip.
+Registered DOOM/DOOM2 data, Plutonia, TNT and FreeDM are not bundled.
+
+Credits
+-------
+- id Software: DOOM and the 1997 source release that made source ports possible.
+- The ZDoom and GZDoom communities and contributors: the engine this port builds on.
+- tomb-engine / Rejected Coins LLC: the WebAssembly browser port, worker runtime
+  and JSPI integration. https://rejectedcoins.com
+- The Emscripten team: the WebAssembly toolchain (OpenAL, JSPI, MEMFS, IDBFS).

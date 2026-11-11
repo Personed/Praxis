@@ -349,3 +349,53 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## DOOM (GZDoom WebAssembly port, tomb-engine)
+
+- Port: tomb-engine upstream `6c735315b8ac1b1dd6646ac78c46bbbdbb775a5c`
+  (https://github.com/mungus43/tomb-engine/tree/6c735315b8ac1b1dd6646ac78c46bbbdbb775a5c)
+  wrapping GZDoom `g4.11.3` (https://github.com/ZDoom/gzdoom/tree/g4.11.3)
+- Adapted in: `apps/desktop/src/renderer/public/doom/gzdoom` and
+  `apps/desktop/src/renderer/src/features/doom`; local changes are described in
+  `doom/gzdoom/LOCAL-CHANGES.md` and `doom/gzdoom/UPSTREAM-PATCH_INVENTORY.md`
+- License: GPL-3.0. The full text ships in the app at
+  `doom/gzdoom/UPSTREAM-LICENSE` and in
+  `apps/desktop/resources/licenses/doom-gzdoom-GPL-3.0.txt`; upstream source is
+  linked above, and the build recipe ships at `doom/gzdoom/UPSTREAM-build.ps1`.
+  Provenance details: `apps/desktop/resources/licenses/doom-gzdoom-PROVENANCE.txt`
+- Credits: id Software (DOOM and its 1997 source release); the ZDoom and GZDoom
+  contributors; tomb-engine / Rejected Coins LLC (https://rejectedcoins.com) for
+  the WebAssembly port; the Emscripten team for the toolchain.
+
+The bundled `DOOM1.WAD` is the original shareware v1.9 game data, copyright id
+Software / ZeniMax Media Inc. It is not covered by the engine's GPL. Its
+original distribution notices ship unmodified at `doom/game/README.TXT` and
+`doom/game/doom19s-original.zip`.
+
+## Agent state (Cojeev)
+
+- Project: https://cojeev.com/ui/docs/agent-state/ ("Agent state · 000h by Cojeev")
+- Adapted in: `apps/desktop/src/renderer/src/components/conversation/agent-state.tsx`
+- License: MIT, as declared in the adapted component's attribution header.
+
+```
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
