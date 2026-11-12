@@ -155,6 +155,7 @@ describe("main window renderer target and redirects", () => {
     await createWindow();
     expect(electronState.lastOptions).toMatchObject({
       transparent: false,
+      accentColor: false,
       thickFrame: true,
       roundedCorners: true,
       backgroundMaterial: "acrylic",

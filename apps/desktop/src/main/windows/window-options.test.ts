@@ -29,6 +29,7 @@ describe("windowChromeOptionsFor", () => {
   it("uses the native Windows controls overlay instead of drawing caption buttons", () => {
     expect(windowChromeOptionsFor(resolveWindowAppearance("win32", "10.0.22621"))).toMatchObject({
       frame: false,
+      accentColor: false,
       thickFrame: true,
       titleBarStyle: "hidden",
       titleBarOverlay: { height: 36 },
@@ -45,6 +46,7 @@ describe("windowChromeOptionsFor", () => {
   ])("hides the system title bar without Acrylic on Windows %s", (version) => {
     expect(windowChromeOptionsFor(resolveWindowAppearance("win32", version))).toMatchObject({
       frame: false,
+      accentColor: false,
       titleBarStyle: "hidden",
       titleBarOverlay: { height: 36 },
       backgroundMaterial: "none",
@@ -91,6 +93,7 @@ describe("windowChromeOptionsFor", () => {
       }),
     ).toMatchObject({
       frame: false,
+      accentColor: false,
       thickFrame: true,
       titleBarStyle: "hidden",
       titleBarOverlay: { height: 36 },

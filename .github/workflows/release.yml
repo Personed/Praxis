@@ -134,7 +134,7 @@ jobs:
     needs: [prepare, draft-release]
     # PR packaging is covered by the dedicated Package macOS workflow.
     if: ${{ startsWith(github.ref, 'refs/tags/v') && !cancelled() && needs.prepare.result == 'success' && (needs.draft-release.result == 'success' || needs.draft-release.result == 'skipped') }}
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 75
     strategy:
       # Let both arches finish so one run shows every problem.

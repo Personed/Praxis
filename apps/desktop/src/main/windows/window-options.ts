@@ -11,6 +11,7 @@ export function windowChromeOptionsFor(
   state?: Pick<AppearanceState, "glass" | "effectiveTheme" | "look">,
 ): Pick<
   BrowserWindowConstructorOptions,
+  | "accentColor"
   | "backgroundColor"
   | "backgroundMaterial"
   | "frame"
@@ -41,6 +42,7 @@ export function windowChromeOptionsFor(
     return {
       backgroundColor: glass ? "#00000000" : solidWindowBackground(palette),
       backgroundMaterial: glass ? "acrylic" : "none",
+      accentColor: false,
       frame: false,
       thickFrame: true,
       roundedCorners: true,
