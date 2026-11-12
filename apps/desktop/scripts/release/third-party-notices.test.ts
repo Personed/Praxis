@@ -39,14 +39,16 @@ function read(path: string): string {
 }
 
 describe("no third-party component marks left in components/", () => {
-  it("only the licensed Prompt Bar keeps its upstream mark", () => {
-    const licensedPromptBar = join(componentsDir, "ui/react-bits/PromptBar.tsx");
+  it("only licensed React Bits components keep their upstream mark", () => {
+    const licensedComponents = ["PromptBar.tsx", "WakeSlider.tsx"].map((name) =>
+      join(componentsDir, "ui/react-bits", name),
+    );
     const marked = walk(componentsDir)
       .filter((path) => MARK.test(read(path)))
-      .filter((path) => path !== licensedPromptBar)
+      .filter((path) => !licensedComponents.includes(path))
       .map((path) => relative(repoRoot, path));
     expect(marked).toEqual([]);
-    expect(MARK.test(read(licensedPromptBar))).toBe(true);
+    for (const path of licensedComponents) expect(MARK.test(read(path))).toBe(true);
   });
 
   it("the removed component files do not come back (any extension, any folder)", () => {
