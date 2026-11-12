@@ -281,7 +281,6 @@ export function migrateDatabase(db: DatabaseSync): void {
   addColumn(db, "agent_sessions", "model", "text");
   addColumn(db, "agent_sessions", "pi_session_id", "text");
   addColumn(db, "agent_sessions", "pi_session_file", "text");
-  addColumn(db, "agent_sessions", "thinking_variant", "text");
   addColumn(
     db,
     "agent_sessions",
@@ -1416,90 +1415,24 @@ function backfillMemberAgents(db: DatabaseSync): void {
     )
     .all() as Array<{ group_id: string; session_id: string; title: string }>;
   const hasShape = hasColumn(db, "agents", "avatar_shape");
-  const link = db.prepare(`
-    update agent_group_members
-    set agent_id = json_extract(value, '$.agent_id')
-    from json_each(?)
-    where group_id = json_extract(value, '$.group_id') and session_id = json_extract(value, '$.session_id')
-  `);
-
-  const insertAgentBatched = db.prepare(
+  const insertAgent = db.prepare(
     hasShape
       ? `insert into agents (id, name, avatar_face, avatar_color, avatar_shape, created_at, updated_at)
-         select
-           json_extract(value, '$.id'),
-           json_extract(value, '$.name'),
-           json_extract(value, '$.avatarFace'),
-           json_extract(value, '$.avatarColor'),
-           json_extract(value, '$.avatarShape'),
-           json_extract(value, '$.createdAt'),
-           json_extract(value, '$.updatedAt')
-         from json_each(?)`
+         values (?, ?, ?, ?, ?, ?, ?)`
       : `insert into agents (id, name, avatar_face, avatar_color, created_at, updated_at)
-         select
-           json_extract(value, '$.id'),
-           json_extract(value, '$.name'),
-           json_extract(value, '$.avatarFace'),
-           json_extract(value, '$.avatarColor'),
-           json_extract(value, '$.createdAt'),
-           json_extract(value, '$.updatedAt')
-         from json_each(?)`,
+         values (?, ?, ?, ?, ?, ?)`,
   );
-
+  const link = db.prepare(
+    "update agent_group_members set agent_id = ? where group_id = ? and session_id = ?",
+  );
   const now = new Date().toISOString();
-  const insertBatch = [];
-  const updateBatch = [];
-  const BATCH_SIZE = 500;
-
-  const taken = db.prepare("select 1 from agents where name = ?");
-  // SQLite NOCASE folds ASCII, stops at NUL, then compares total UTF-8 byte lengths.
-  const nameKey = (name: string) =>
-    `${Buffer.byteLength(name)}:${name.split("\0", 1)[0]?.replace(/[A-Z]/g, (c) => c.toLowerCase())}`;
-  const takenNames = new Set<string>();
-
-  for (let i = 0; i < members.length; i++) {
-    const member = members[i];
-    if (!member) continue;
-
+  for (const member of members) {
     const id = randomUUID();
     const { avatarFace, avatarColor, avatarShape } = agentAvatarForId(id);
-
-    const base = member.title || "Agent";
-
-    let name = base;
-    let suffix = 2;
-
-    while (takenNames.has(nameKey(name)) || taken.get(name) !== undefined) {
-      name = `${base} ${suffix}`;
-      suffix++;
-    }
-    takenNames.add(nameKey(name));
-
-    insertBatch.push({
-      id,
-      name,
-      avatarFace,
-      avatarColor,
-      avatarShape,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    updateBatch.push({
-      group_id: member.group_id,
-      session_id: member.session_id,
-      agent_id: id,
-    });
-
-    if (insertBatch.length === BATCH_SIZE || i === members.length - 1) {
-      if (insertBatch.length > 0) {
-        insertAgentBatched.run(JSON.stringify(insertBatch));
-        link.run(JSON.stringify(updateBatch));
-        insertBatch.length = 0;
-        updateBatch.length = 0;
-        takenNames.clear();
-      }
-    }
+    const name = uniqueAgentName(db, member.title || "Agent");
+    if (hasShape) insertAgent.run(id, name, avatarFace, avatarColor, avatarShape, now, now);
+    else insertAgent.run(id, name, avatarFace, avatarColor, now, now);
+    link.run(id, member.group_id, member.session_id);
   }
 }
 

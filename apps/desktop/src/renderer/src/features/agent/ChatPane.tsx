@@ -46,7 +46,7 @@ import { contextItemKey } from "../composer/composerTokens";
 import type { MentionEditorPart } from "../composer/MentionEditor";
 import { QueuedPromptStrip } from "../composer/QueuedPromptStrip";
 import { restoreQueuedToDraft } from "../composer/restoreQueued";
-import { SessionModelPicker } from "../composer/SessionModelPicker";
+import { useSessionComposerSelectors } from "../composer/SessionModelPicker";
 import { SessionBranchPicker } from "../git/SessionBranchPicker";
 import { effectiveBuildStatus, normalizePlan } from "../plan/planState";
 import { QuestionsCard } from "../plan/QuestionsCard";
@@ -217,7 +217,7 @@ type ChatPaneProps = {
   initialEvents?: AgentEventItem[] | undefined;
   onInitialEventsConsumed?(sessionId: string): void;
   /** Refresh the session list after operations that mutate session rows. */
-  onSessionsChanged(): void;
+  onSessionsChanged(): void | Promise<void>;
   onModelChange(model: string): void;
   onModelConfigChange(model: string, thinkingVariant: string): Promise<void> | void;
   /** "Review" on the changes strip: focus this pane and open the diff panel. */
@@ -575,7 +575,6 @@ export function ChatPane({
   };
   // L2: the session's saved branch no longer exists -> sending is blocked until replaced.
   const [branchBlocked, setBranchBlocked] = useState(false);
-  const [modelBlocked, setModelBlocked] = useState(false);
   const [pendingPrompt, setPendingPrompt] = useState(false);
   const [aborting, setAborting] = useState(false);
   const [workingStats, setWorkingStats] = useState<WorkingChangeStats | undefined>();
@@ -1104,6 +1103,16 @@ export function ChatPane({
   // A saved session model stays selected across Settings/catalog changes; only a session
   // without a saved model inherits the app default.
   const paneModel = turnModelForPane(defaultModel, session.model);
+  const { blocked: modelBlocked, selectors } = useSessionComposerSelectors({
+    sessionId,
+    storedModelId: session.model || undefined,
+    defaultModelId: defaultModel,
+    models,
+    modelsReady,
+    isRunning,
+    onError: setPromptError,
+    onChanged: onSessionsChanged,
+  });
   const activeCwd = session.cwd;
   const retryStatus = sessionStatus.type === "retry" ? sessionStatus : undefined;
   const runStage = useMemo(() => currentRunStage(stateAgentEvents), [stateAgentEvents]);
@@ -1470,7 +1479,7 @@ export function ChatPane({
               >
                 <button
                   aria-label="Scroll to latest"
-                  className="pointer-events-auto flex size-10 items-center justify-center rounded-full border border-popup-border bg-elevated text-fg-muted shadow-popup outline-none transition-colors duration-(--motion-duration-fast) hover:bg-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-focus-ring"
+                  className="pointer-events-auto flex size-10 items-center justify-center rounded-full border border-popup-border bg-elevated text-fg-muted shadow-popup outline-none transition-colors duration-(--motion-duration-fast) hover:bg-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-focus-ring/35"
                   onClick={autoScroll.scrollToLatest}
                   title="Scroll to latest"
                   type="button"
@@ -1570,28 +1579,15 @@ export function ChatPane({
                           modelId: paneModel,
                         })}
                         branchControl={
-                          <>
-                            <SessionModelPicker
-                              defaultModelId={defaultModel}
-                              isRunning={isRunning}
-                              models={models}
-                              modelsReady={modelsReady}
-                              onBlockedChange={setModelBlocked}
-                              onChanged={onSessionsChanged}
-                              onError={setPromptError}
-                              sessionId={sessionId}
-                              storedModelId={session.model || undefined}
-                              storedThinkingVariant={session.thinkingVariant}
-                            />
-                            <SessionBranchPicker
-                              cwd={activeCwd}
-                              isRunning={isRunning}
-                              onBlockedChange={setBranchBlocked}
-                              onError={setPromptError}
-                              sessionId={sessionId}
-                            />
-                          </>
+                          <SessionBranchPicker
+                            cwd={activeCwd}
+                            isRunning={isRunning}
+                            onBlockedChange={setBranchBlocked}
+                            onError={setPromptError}
+                            sessionId={sessionId}
+                          />
                         }
+                        selectors={selectors}
                         contextItems={contextItems}
                         cwd={activeCwd}
                         draft={{

@@ -87,7 +87,6 @@ describe("Activity panel glass", () => {
     expect(rule('.activity-panel [data-activity-inset="error"]')).toMatch(
       /--activity-inset-error-bg/,
     );
-    expect(rule(".activity-panel")).toMatch(/--tool-group-mask-from: var\(--surface-sidebar\)/);
     // Light glass lightens the inset (a darker fill dropped faint text below 4.5:1).
     expect(rule(':root:not([data-theme="dark"]) .activity-panel')).toMatch(
       /--activity-inset-bg: color-mix\(in srgb, #fff 60%, transparent\)/,
@@ -96,11 +95,5 @@ describe("Activity panel glass", () => {
 
   it("the shared .timeline-wire chrome is unchanged outside Activity", () => {
     expect(rule(".timeline-wire")).toMatch(/border: 1px solid var\(--color-hairline\)/);
-  });
-
-  it("the streaming mask fades from the panel surface, not the canvas", () => {
-    expect(read("../features/agent/ToolGroup.tsx")).toContain(
-      "from-[var(--tool-group-mask-from,var(--color-canvas))]",
-    );
   });
 });

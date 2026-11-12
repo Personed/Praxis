@@ -63,7 +63,7 @@ describe("AgentAvatar render sites", () => {
     for (const file of sourceFiles(RENDERER_SRC)) {
       const source = readFileSync(file, "utf8");
       for (const seed of avatarSeeds(source)) {
-        found.push({ file: relative(RENDERER_SRC, file), seed });
+        found.push({ file: relative(RENDERER_SRC, file).replaceAll("\\", "/"), seed });
       }
     }
     const offenders = found.filter(({ seed }) => !ALLOWED_SEEDS.some((rule) => rule.test(seed)));

@@ -115,7 +115,7 @@ function Unsupported({
             : "Binary file — no in-app preview.")}
       </div>
       <button
-        className="flex h-8 items-center gap-1.5 rounded-lg border border-hairline bg-surface px-2.5 text-fg text-xs outline-none transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-focus-ring"
+        className="flex h-8 items-center gap-1.5 rounded-lg border border-hairline bg-surface px-2.5 text-fg text-xs outline-none transition-colors hover:bg-hover"
         onClick={openExternally}
         type="button"
       >

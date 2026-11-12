@@ -8,6 +8,14 @@ import {
   WAIT_TOOL_NAME,
 } from "../../../../shared/tools";
 import { CollapsibleMotion } from "../../components/ui/CollapsibleMotion";
+import {
+  TraceCollapsible,
+  TraceCollapsibleContent,
+  TraceCollapsibleTrigger,
+  TraceIcon,
+  TraceLine,
+  TraceTitle,
+} from "../../components/ui/trace";
 import { WorkingText } from "../../components/ui/WorkingText";
 import { cn } from "../../lib/cn";
 import { PlanTimelineCard } from "../plan/PlanTimelineCard";
@@ -300,65 +308,34 @@ function FlatToolRow({
   isComplete = false,
   isError = false,
 }: FlatToolRowProps) {
-  const [open, setOpen] = useState(false);
   const running = !isComplete && !isError;
   const view = describeTool(name, args, running, output);
-  const status = running ? liveStatus(output) : "";
+  const liveDetail = running ? liveStatus(output) : "";
   const detail = running ? "" : toolDetail(name, args, output);
-  const expandable = detail.trim().length > 0;
-
-  const body = (
-    <>
-      {view.icon ? <span className="shrink-0 text-fg-faint">{view.icon}</span> : null}
-      {running ? (
-        <>
-          <WorkingText className="shrink-0">{view.verb}</WorkingText>
-          {status ? (
-            <span className="min-w-0 flex-1 truncate text-fg-muted" title={status}>
-              {status}
-            </span>
-          ) : null}
-        </>
-      ) : (
-        <>
-          <span className={cn("shrink-0", isError ? "text-danger" : "text-fg-subtle")}>
-            {view.verb}
-          </span>
-          <span className="min-w-0 flex-1 truncate text-fg-subtle" title={view.target}>
-            {view.target}
-          </span>
-        </>
-      )}
-      {expandable ? (
-        <IconChevronRight
-          className="disclosure-chevron shrink-0 text-fg-faint duration-(--motion-duration-base)"
-          data-open={open ? "" : undefined}
-          size={14}
-          stroke={1.7}
-        />
+  const target = liveDetail || view.target;
+  const line = (
+    <TraceLine status={isError ? "error" : running ? "running" : undefined}>
+      {view.icon ? <TraceIcon>{view.icon}</TraceIcon> : null}
+      <TraceTitle className="shrink-0">
+        {running ? <WorkingText>{view.verb}</WorkingText> : view.verb}
+      </TraceTitle>
+      {target ? (
+        <span className="min-w-0 truncate text-fg-muted" title={target}>
+          {target}
+        </span>
       ) : null}
-    </>
+    </TraceLine>
   );
 
-  return (
-    <div className="min-w-0 text-sm">
-      {expandable ? (
-        <button
-          aria-expanded={open}
-          className="flex w-full min-w-0 items-center gap-2 rounded-md py-0.5 text-left text-fg-subtle transition-colors duration-(--motion-duration-fast) ease-standard hover:text-fg-muted"
-          onClick={() => setOpen((value) => !value)}
-          type="button"
-        >
-          {body}
-        </button>
-      ) : (
-        <div className="flex w-full min-w-0 items-center gap-2 py-0.5 text-fg-subtle">{body}</div>
-      )}
+  if (!detail.trim()) return line;
 
-      <CollapsibleMotion open={open && expandable} preset="timeline">
+  return (
+    <TraceCollapsible>
+      <TraceCollapsibleTrigger>{line}</TraceCollapsibleTrigger>
+      <TraceCollapsibleContent>
         <pre
           className={cn(
-            "scroll-thin mt-1 max-h-72 overflow-auto rounded-md border border-hairline bg-card px-3 py-2",
+            "scroll-thin max-h-72 overflow-auto rounded-md border border-hairline bg-card px-3 py-2",
             "whitespace-pre-wrap wrap-break-word text-xs text-fg-muted leading-relaxed",
             isError && "border-danger/25 text-danger/90",
           )}
@@ -366,8 +343,8 @@ function FlatToolRow({
         >
           {clampDetail(detail)}
         </pre>
-      </CollapsibleMotion>
-    </div>
+      </TraceCollapsibleContent>
+    </TraceCollapsible>
   );
 }
 

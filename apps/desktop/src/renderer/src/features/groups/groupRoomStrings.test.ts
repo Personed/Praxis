@@ -150,7 +150,7 @@ describe("features/groups, Files panel and Search card have no hardcoded user-vi
   ];
   for (const file of files) {
     const hits = scan(file);
-    if (hits.length > 0) found.set(relative(here, file), hits);
+    if (hits.length > 0) found.set(relative(here, file).replaceAll("\\", "/"), hits);
   }
 
   it("every copy-like literal is in the catalog or justified in ALLOWED", () => {
@@ -184,7 +184,7 @@ describe("features/groups, Files panel and Search card have no hardcoded user-vi
   });
 
   it("covers the Files panel and the Search Tool card (C6.1)", () => {
-    const scanned = files.map((file) => relative(here, file));
+    const scanned = files.map((file) => relative(here, file).replaceAll("\\", "/"));
     for (const file of [
       "../files/FilesPanel.tsx",
       "../files/UnsavedChangesDialog.tsx",

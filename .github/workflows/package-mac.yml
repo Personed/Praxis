@@ -21,7 +21,7 @@ permissions:
 jobs:
   package-mac:
     name: package (${{ matrix.electron_arch }})
-    runs-on: macos-15
+    runs-on: macos-14
     timeout-minutes: 75
     strategy:
       fail-fast: false

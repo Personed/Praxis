@@ -14,7 +14,6 @@ type AgentSessionRow = {
   model: string | null;
   pi_session_id: string | null;
   pi_session_file: string | null;
-  thinking_variant: string | null;
   parent_session_id: string | null;
   subagent_task: string | null;
   subagent_type: string | null;
@@ -35,7 +34,7 @@ type AgentSessionRow = {
 };
 
 const SESSION_COLUMNS = `id, workspace_id, title, cwd, status, runtime, model, pi_session_id,
-  pi_session_file, thinking_variant, parent_session_id, subagent_task, subagent_type, subagent_readonly,
+  pi_session_file, parent_session_id, subagent_task, subagent_type, subagent_readonly,
   subagent_worktree_path, subagent_worktree_branch, subagent_worktree_base_sha,
   subagent_integration_status, subagent_changed_files_json, subagent_conflict_files_json,
   pinned_at, archived_at, kind, agent_id, read_only, created_at, updated_at`;
@@ -70,7 +69,6 @@ function toSession(row: AgentSessionRow): AgentSessionInfo {
   if (row.pi_session_id !== null) {
     session.piSessionId = row.pi_session_id;
   }
-  if (row.thinking_variant != null) session.thinkingVariant = row.thinking_variant;
   if (row.pi_session_file !== null) {
     session.piSessionFile = row.pi_session_file;
   }
@@ -284,9 +282,7 @@ export function updateAgentSessionStatus(
 
 export function updateAgentSessionMetadata(
   sessionId: string,
-  metadata: Partial<
-    Pick<AgentSessionInfo, "model" | "piSessionId" | "piSessionFile" | "thinkingVariant">
-  >,
+  metadata: Partial<Pick<AgentSessionInfo, "model" | "piSessionId" | "piSessionFile">>,
 ): AgentSessionInfo | undefined {
   const existing = getAgentSession(sessionId);
   if (!existing) {
@@ -297,16 +293,10 @@ export function updateAgentSessionMetadata(
   getDatabase()
     .prepare(
       `update agent_sessions
-       set model = ?, pi_session_id = ?, pi_session_file = ?, thinking_variant = ?
+       set model = ?, pi_session_id = ?, pi_session_file = ?
        where id = ?`,
     )
-    .run(
-      next.model ?? null,
-      next.piSessionId ?? null,
-      next.piSessionFile ?? null,
-      next.thinkingVariant ?? null,
-      sessionId,
-    );
+    .run(next.model ?? null, next.piSessionId ?? null, next.piSessionFile ?? null, sessionId);
 
   return next;
 }

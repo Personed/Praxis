@@ -39,11 +39,14 @@ function read(path: string): string {
 }
 
 describe("no third-party component marks left in components/", () => {
-  it("no file anywhere under components/ carries the upstream mark", () => {
+  it("only the licensed Prompt Bar keeps its upstream mark", () => {
+    const licensedPromptBar = join(componentsDir, "ui/react-bits/PromptBar.tsx");
     const marked = walk(componentsDir)
       .filter((path) => MARK.test(read(path)))
+      .filter((path) => path !== licensedPromptBar)
       .map((path) => relative(repoRoot, path));
     expect(marked).toEqual([]);
+    expect(MARK.test(read(licensedPromptBar))).toBe(true);
   });
 
   it("the removed component files do not come back (any extension, any folder)", () => {
@@ -94,11 +97,11 @@ describe("license files after L0", () => {
     expect(section).not.toMatch(/components\/ui\//);
   });
 
-  it("THIRD_PARTY_NOTICES.md keeps Agent Elements and drops the removed entry", () => {
+  it("THIRD_PARTY_NOTICES.md keeps notices for the included components", () => {
     const notices = read(join(repoRoot, "THIRD_PARTY_NOTICES.md"));
     expect(notices).toContain("## Agent Elements (21st.dev)");
-    expect(notices).not.toMatch(MARK);
-    expect(notices).not.toContain("Commons Clause");
+    expect(notices).toContain("MIT + Commons Clause License Condition v1.0");
+    expect(notices).toMatch(MARK);
     for (const path of notices.match(/`apps\/desktop\/[^`]+`/g) ?? []) {
       expect(existsSync(join(repoRoot, path.slice(1, -1))), path).toBe(true);
     }

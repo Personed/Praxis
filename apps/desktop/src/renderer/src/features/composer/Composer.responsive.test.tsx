@@ -52,11 +52,13 @@ function renderAt(width: number) {
 }
 
 describe("Composer toolbar responsive (L3c)", () => {
-  it("lg: Attach inline, no Connections button, no overflow menu", () => {
+  it("lg: opens the React Bits attachment menu, with no overflow menu", async () => {
     renderAt(700);
     expect(screen.getByTestId("composer-toolbar").dataset.widthTier).toBe("lg");
     expect(screen.getByTestId("tier-probe").textContent).toBe("lg");
-    expect(screen.getByRole("button", { name: "Attach files" })).toBeTruthy();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Add files and sources" }));
+    expect(await screen.findByRole("option", { name: "Attach files" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Connections" })).toBeNull();
     expect(screen.queryByRole("button", { name: "More actions" })).toBeNull();
   });
@@ -72,7 +74,7 @@ describe("Composer toolbar responsive (L3c)", () => {
     const user = userEvent.setup();
     renderAt(330);
     expect(screen.getByTestId("tier-probe").textContent).toBe("sm");
-    expect(screen.queryByRole("button", { name: "Attach files" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add files and sources" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Connections" })).toBeNull();
     // Send stays on the bar.
     expect(screen.getByRole("button", { name: "Send" })).toBeTruthy();

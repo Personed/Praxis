@@ -6,7 +6,7 @@ Upstream tomb-engine commit 6c735315b8ac1b1dd6646ac78c46bbbdbb775a5c, wrapping G
 - gzdoom.js: emscripten_sleep awaits self.nexoWaitForResume before its original timer. This lets the worker suspend at a JSPI yield without spinning while paused. emscripten_get_now uses nexoNow, rebased by frozenDuration so paused wall-clock time never becomes catch-up game tics.
 - engine.worker.js: telemetry pump reduced to a frame count for startup readiness; renderer, input shims and resize protocol remain upstream.
 - nexo.worker.js is our wrapper: waits for E1M1 and presented frames; pauses simulation through the engine Pause key and then suspends yields; resumes explicitly; updates the backbuffer pin and redraws on resize while simulation stays paused.
-- Main adapter and bindings are in src/features/doom/runtime.ts and wide-protocol.ts. Audio/multiplayer are disabled. No user config, URL, remote WAD or arbitrary command comes from the UI.
+- Main adapter and bindings are in src/features/doom/runtime.ts and wide-protocol.ts. The worker's OpenAL shim is bridged to a main-thread AudioContext; multiplayer is disabled. No user config, URL, remote WAD or arbitrary command comes from the UI.
 
 The original shareware DOOM1.WAD is unchanged and its distribution notices are preserved in ../game. Registered DOOM/DOOM2 files and FreeDM are not included by this integration.
 

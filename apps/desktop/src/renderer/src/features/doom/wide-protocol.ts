@@ -54,8 +54,6 @@ export function startupArguments(size: { width: number; height: number }) {
     "/DOOM1.WAD",
     "-config",
     "/nexo.ini",
-    "-nosound",
-    "-nomusic",
     "-skill",
     "3",
     "+vid_rendermode",

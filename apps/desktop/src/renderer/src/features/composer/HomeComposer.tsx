@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { modelThinkingOptions, selectedThinkingOption } from "../../lib/modelThinking";
+import { useShellText } from "../../lib/shellText";
 import { Composer, type ComposerProps } from "./Composer";
-import { HeroModelPicker, isPickableModel, ModelEffortPicker } from "./SessionModelPicker";
+import { isPickableModel } from "./SessionModelPicker";
 
-type HomeComposerProps = Omit<ComposerProps, "branchControl" | "model" | "onSubmit"> & {
+type HomeComposerProps = Omit<
+  ComposerProps,
+  "branchControl" | "model" | "onSubmit" | "selectors"
+> & {
   /** App default model from Settings; "" when none is configured. */
   defaultModelId: string;
   /** Model picked for the first message; "" = follow the app default. */
@@ -27,6 +31,7 @@ export function HomeComposer({
   models,
   ...rest
 }: HomeComposerProps) {
+  const t = useShellText();
   const modelId = heroModel || defaultModelId;
   const model = models.find((item) => item.id === modelId);
   const options = model && isPickableModel(models, modelId) ? modelThinkingOptions(model) : [];
@@ -40,27 +45,21 @@ export function HomeComposer({
   return (
     <Composer
       {...rest}
-      branchControl={
-        <>
-          <HeroModelPicker
-            defaultModelId={defaultModelId}
-            models={models}
-            onValueChange={(next) => {
-              if (next !== modelId) setEffort(undefined);
-              onHeroModelChange(next);
-            }}
-            value={heroModel}
-          />
-          {options.length > 1 && current ? (
-            <ModelEffortPicker
-              current={current}
-              onSelect={(value) => setEffort({ modelId, value })}
-              options={options}
-              testId="home-effort-picker"
-            />
-          ) : null}
-        </>
-      }
+      selectors={{
+        modelLabel:
+          model && isPickableModel(models, modelId)
+            ? heroModel
+              ? model.name
+              : t("shell.modelDefault", { name: model.name })
+            : t("shell.pickModel"),
+        onModelChange: (next) => {
+          if (next !== modelId) setEffort(undefined);
+          onHeroModelChange(next);
+        },
+        efforts: options.length > 1 ? options : [],
+        effort: current?.value,
+        onEffortChange: (value) => setEffort({ modelId, value }),
+      }}
       model={modelId}
       onSubmit={(...args) => (selected ? onSubmit(...args, selected.value) : onSubmit(...args))}
       models={models}

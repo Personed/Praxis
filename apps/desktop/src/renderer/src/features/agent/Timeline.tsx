@@ -1471,6 +1471,7 @@ export function Timeline({
                       {...(onRestoreCheckpoint ? { onRestoreCheckpoint } : {})}
                       {...(embedded ? { compactClip: true } : {})}
                       content={block.content}
+                      createdAt={block.createdAt}
                       cwd={cwd}
                       {...(onOpenFile ? { onOpenFile } : {})}
                       editable={block.editable ?? false}
@@ -1488,7 +1489,13 @@ export function Timeline({
 
               return (
                 <RevealOnMount animate={freshKeys.has(key)} key={key}>
-                  <div className={block.type === "message" ? "w-full min-w-0" : "w-full px-8"}>
+                  <div
+                    className={
+                      block.type === "message" || block.type === "work-fold"
+                        ? "w-full min-w-0"
+                        : "w-full px-8"
+                    }
+                  >
                     {block.type === "work-fold" ? (
                       <WorkFold
                         assistantAgent={assistantAgent}
@@ -1515,6 +1522,7 @@ export function Timeline({
                           : {})}
                         {...(onRestoreCheckpoint ? { onRestoreCheckpoint } : {})}
                         content={block.content}
+                        createdAt={block.createdAt}
                         cwd={cwd}
                         {...(onOpenFile ? { onOpenFile } : {})}
                         editable={block.editable ?? false}

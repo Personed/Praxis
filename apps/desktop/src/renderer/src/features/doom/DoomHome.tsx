@@ -2,10 +2,18 @@ import { IconLayoutSidebarLeftExpand } from "@tabler/icons-react";
 import { useCallback, useEffect, useRef } from "react";
 import "./DoomHome.css";
 
+const source = () =>
+  location.protocol === "file:"
+    ? "modus-game://home/doom.html"
+    : new URL("/doom.html", location.href).href;
+
 export function DoomHome({
+  active = true,
   sidebarOpen,
   onToggleSidebar,
 }: {
+  /** The home route is on screen; false keeps the game mounted but paused. */
+  active?: boolean;
   sidebarOpen: boolean;
   onToggleSidebar(): void;
 }) {
@@ -15,8 +23,8 @@ export function DoomHome({
     [],
   );
   useEffect(() => {
-    if (sidebarOpen) pause();
-  }, [sidebarOpen, pause]);
+    if (!active || sidebarOpen) pause();
+  }, [active, sidebarOpen, pause]);
   useEffect(() => {
     const message = (event: MessageEvent) => {
       if (event.source !== frame.current?.contentWindow || event.data?.type !== "modus-doom")
@@ -44,8 +52,9 @@ export function DoomHome({
     <div className="doom-home-stage" data-testid="doom-home">
       <iframe
         ref={frame}
-        src="modus-game://home/doom.html"
+        src={source()}
         title="DOOM Web Wide"
+        allow="autoplay"
         className="doom-home-frame"
         sandbox="allow-scripts allow-same-origin allow-pointer-lock"
       />

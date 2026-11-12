@@ -1180,86 +1180,6 @@ describe("PiSdkRuntime", () => {
     expect(row.model).toBe("byok/removed-model");
   });
 
-  it("recovers a removed thinking variant on the same model only with an explicit valid selection", async () => {
-    const sessionId = `session-${crypto.randomUUID()}`;
-    insertSession(sessionId, `workspace-${crypto.randomUUID()}`, join(userData, "missing.jsonl"));
-    getDatabase()
-      .prepare("update agent_sessions set thinking_variant = ? where id = ?")
-      .run("removed", sessionId);
-    const resolver = vi.mocked(modelService.resolveModelThinking);
-    const original = resolver.getMockImplementation()!;
-    resolver.mockImplementation((model, variant) => {
-      if (variant !== "low" && variant !== "high")
-        throw new Error(`Thinking variant "${variant}" is unavailable.`);
-      return { model, variant, thinkingLevel: variant };
-    });
-    const runtime = new PiSdkRuntime();
-    const window = createWindowStub();
-    try {
-      await expect(runtime.ensure(window, sessionId)).rejects.toThrow('Thinking variant "removed"');
-      expect(
-        getDatabase()
-          .prepare("select thinking_variant from agent_sessions where id = ?")
-          .get(sessionId),
-      ).toMatchObject({ thinking_variant: "removed" });
-      await expect(runtime.setModel(window, sessionId, "mock/model", "invalid")).rejects.toThrow(
-        'Thinking variant "invalid"',
-      );
-      expect(
-        getDatabase()
-          .prepare("select thinking_variant from agent_sessions where id = ?")
-          .get(sessionId),
-      ).toMatchObject({ thinking_variant: "removed" });
-      const updated = await runtime.setModel(window, sessionId, "mock/model", "low");
-      expect(updated.thinkingVariant).toBe("low");
-      expect(
-        getDatabase()
-          .prepare("select model, thinking_variant from agent_sessions where id = ?")
-          .get(sessionId),
-      ).toMatchObject({ model: "mock/model", thinking_variant: "low" });
-      expect(mocks.createAgentSession.mock.calls.at(-1)?.[0]).toMatchObject({
-        thinkingLevel: "low",
-      });
-    } finally {
-      resolver.mockImplementation(original);
-      await runtime.releaseRuntime(sessionId);
-    }
-  });
-
-  it("keeps legacy automation thinkingLevel separate from explicit numeric thinking variants", async () => {
-    const sessionId = `session-${crypto.randomUUID()}`;
-    insertSession(sessionId, `workspace-${crypto.randomUUID()}`, join(userData, "missing.jsonl"));
-    const resolver = vi.mocked(modelService.resolveModelThinking);
-    const original = resolver.getMockImplementation()!;
-    resolver.mockImplementation((model, variant, level) => {
-      if (variant !== undefined && variant !== "8192")
-        throw new Error(`Thinking variant "${variant}" is unavailable.`);
-      return { model, variant: "8192", thinkingLevel: "high", thinkingBudget: 8192 };
-    });
-    const runtime = new PiSdkRuntime();
-    const window = createWindowStub();
-    try {
-      await runtime.ensure(window, sessionId);
-      resolver.mockClear();
-      await runtime.prompt(window, {
-        sessionId,
-        message: "Automation",
-        context: [],
-        model: "mock/model",
-        thinkingLevel: "high",
-      });
-      expect(resolver).toHaveBeenCalledWith(mocks.model, undefined, "high");
-      expect(
-        getDatabase()
-          .prepare("select thinking_variant from agent_sessions where id = ?")
-          .get(sessionId),
-      ).toMatchObject({ thinking_variant: "8192" });
-    } finally {
-      resolver.mockImplementation(original);
-      await runtime.releaseRuntime(sessionId);
-    }
-  });
-
   it("restores the selected model from a legacy PI branch when the database model is missing", async () => {
     const sessionId = `legacy-session-${crypto.randomUUID()}`;
     const piSessionFile = join(userData, `${sessionId}.jsonl`);
@@ -6481,19 +6401,6 @@ describe("PiSdkRuntime", () => {
     });
 
     expect(session.cwd).toBe(cwd);
-    expect(session.thinkingVariant).toBe("high");
-    vi.mocked(modelService.resolveModelThinking).mockImplementationOnce(() => {
-      throw new Error('Thinking variant "not-supported" is unavailable for mock/model.');
-    });
-    await expect(
-      runtime.create(window, {
-        workspaceId,
-        cwd,
-        title: "Invalid effort",
-        model: "mock/model",
-        thinkingVariant: "not-supported",
-      }),
-    ).rejects.toThrow("Thinking variant");
     await vi.waitFor(() =>
       expect(mocks.createAgentSession).toHaveBeenCalledWith(
         expect.objectContaining({ thinkingLevel: "high" }),
@@ -6514,12 +6421,6 @@ describe("PiSdkRuntime", () => {
       .prepare("select cwd from agent_sessions where id = ?")
       .get(session.id) as { cwd: string };
     expect(row.cwd).toBe(cwd);
-    await runtime.dispose(session.id);
-    const resumedRuntime = new PiSdkRuntime();
-    await resumedRuntime.ensure(window, session.id);
-    expect(mocks.createAgentSession.mock.calls.at(-1)?.[0]).toMatchObject({
-      thinkingLevel: "high",
-    });
   });
 
   it("injects global guidance before workspace rules", async () => {
@@ -6758,9 +6659,6 @@ describe("PiSdkRuntime", () => {
     const sessionId = `session-${crypto.randomUUID()}`;
     const workspaceId = `workspace-${crypto.randomUUID()}`;
     insertSession(sessionId, workspaceId, join(userData, "missing.jsonl"));
-    getDatabase()
-      .prepare("update agent_sessions set thinking_variant = ? where id = ?")
-      .run("high", sessionId);
     const runtime = new PiSdkRuntime();
     const window = createWindowStub();
 
@@ -6780,9 +6678,6 @@ describe("PiSdkRuntime", () => {
     // Rebuilt once, with the PI tools, permission extension and Project rules on the worktree.
     expect(mocks.createAgentSession.mock.calls.length).toBe(creates + 1);
     expect(mocks.createAgentSession.mock.calls.at(-1)?.[0]).toMatchObject({ cwd: moved });
-    expect(mocks.createAgentSession.mock.calls.at(-1)?.[0]).toMatchObject({
-      thinkingLevel: "high",
-    });
     const loader = mocks.resourceLoaderOptions.at(-1) as {
       cwd: string;
       appendSystemPrompt: string[];

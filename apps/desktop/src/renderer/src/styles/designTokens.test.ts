@@ -175,13 +175,10 @@ describe("Modus semantic design tokens", () => {
   });
 
   it("keeps the Direct Messages folder selector out of its composer footer", () => {
-    const heroTray =
-      app.split("function HeroEnvironmentTray(")[1]?.split("function WorkspaceMenu(")[0] ?? "";
+    const homeComposerFooter = app.split("footer={")[1]?.split("defaultModelId=")[0] ?? "";
 
-    expect(heroTray).not.toContain("<WorkspaceMenu");
-    // Two selectors: the sidebar header and the hero (new chat) composer footer.
-    // The direct-messages composer footer keeps none.
-    expect(app.match(/<WorkspaceMenu\b/g) ?? []).toHaveLength(2);
+    expect(homeComposerFooter).not.toContain("<WorkspaceMenu");
+    expect(app.match(/<WorkspaceMenu\b/g) ?? []).toHaveLength(1);
   });
 
   it("uses the same semantic surface aliases in dark, light, and dark-plus themes", () => {

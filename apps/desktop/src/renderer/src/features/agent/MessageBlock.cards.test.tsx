@@ -231,11 +231,32 @@ describe("message cards", () => {
       />,
     );
     const card = container.querySelector('[data-message-role="assistant"]');
-    expect(card?.className).toContain("chat-message-surface");
+    expect(card?.getAttribute("data-slot")).toBe("message");
+    expect(card?.querySelector('[data-slot="bubble"]')?.getAttribute("data-variant")).toBe("muted");
     expect(await screen.findByText("Reply summary")).toBeTruthy();
     expect(card?.contains(screen.getByRole("button", { name: "Sources (1)" }))).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Sources (1)" }));
     expect(await screen.findByText("app.ts")).toBeTruthy();
+  });
+
+  it("places conversation timestamps in the incoming header and outgoing footer", () => {
+    const { container } = render(
+      <>
+        <MessageBlock content="Incoming" createdAt={0} messageId="a" messageRole="assistant" />
+        <MessageBlock content="Outgoing" createdAt={0} messageId="u" messageRole="user" />
+      </>,
+    );
+    const incoming = container.querySelector('[data-message-role="assistant"]');
+    const outgoing = container.querySelector('[data-message-role="user"]');
+    const time = incoming?.querySelector('[data-slot="message-header"] .tabular-nums');
+    expect(time?.textContent).toMatch(/\d:\d{2}/);
+    expect(outgoing?.getAttribute("data-align")).toBe("end");
+    expect(outgoing?.querySelector('[data-slot="bubble"]')?.getAttribute("data-variant")).toBe(
+      "default",
+    );
+    expect(outgoing?.querySelector('[data-slot="message-footer"]')?.textContent).toBe(
+      time?.textContent,
+    );
   });
 
   it("keeps source-unavailability warnings visible", () => {

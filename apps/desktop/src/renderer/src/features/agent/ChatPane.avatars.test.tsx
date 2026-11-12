@@ -127,8 +127,8 @@ describe("ChatPane message author wiring", () => {
     );
     const view = render(pane(AGENT));
     await waitFor(() => expect(hub.getHistory(SESSION.id)).toHaveLength(3));
-    // The trace is part of the transcript for every chat now, not only subagents.
-    await waitFor(() => expect(view.container.textContent).toContain("Thinking"));
+    const trace = await screen.findByRole("button", { name: /Thinking.*1 step/ });
+    expect(trace.getAttribute("aria-expanded")).toBe("true");
     act(() => {
       hub.publish({
         id: "thinking-end",
@@ -150,8 +150,7 @@ describe("ChatPane message author wiring", () => {
         },
       });
     });
-    // Tool rows stay folded live; the phase label is the visible signal.
-    await waitFor(() => expect(view.container.textContent).toContain("Reading"));
+    await screen.findByText(/preview\.ts/);
     act(() => {
       hub.publish({
         id: "read-end",
@@ -173,15 +172,11 @@ describe("ChatPane message author wiring", () => {
         },
       });
     });
-    if (subagent) {
-      const liveAvatar = await screen.findByRole("img", { name: "Judas" });
-      const liveCard = liveAvatar.parentElement?.querySelector('[data-message-role="assistant"]');
-      await waitFor(() => expect(liveCard?.textContent).toContain("A real rendered reply."));
-      expect(liveAvatar.getAttribute("data-state")).toBe("working");
-    } else {
-      // Main conversations retain the separate Activity presentation.
-      expect(screen.queryByRole("img", { name: "Judas" })).toBeNull();
-    }
+    const liveAvatar = await screen.findByRole("img", { name: "Judas" });
+    const liveCard = liveAvatar.parentElement?.querySelector('[data-message-role="assistant"]');
+    await waitFor(() => expect(liveCard?.textContent).toContain("A real rendered reply."));
+    expect(liveAvatar.getAttribute("data-state")).toBe("working");
+    expect(trace.getAttribute("aria-expanded")).toBe("false");
     act(() => {
       hub.publish({
         id: "end-message",
