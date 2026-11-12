@@ -1,5 +1,7 @@
-import { IconLayoutSidebarLeftExpand } from "@tabler/icons-react";
-import { useCallback, useEffect, useRef } from "react";
+import { IconLayoutSidebarLeftExpand, IconVolume2 } from "@tabler/icons-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import WakeSlider from "../../components/ui/react-bits/WakeSlider";
+import { DEFAULT_DOOM_VOLUME } from "./volume";
 import "./DoomHome.css";
 
 const source = () =>
@@ -18,6 +20,10 @@ export function DoomHome({
   onToggleSidebar(): void;
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
+  const [volume, setVolume] = useState(DEFAULT_DOOM_VOLUME);
+  const sendVolume = useCallback((value: number) => {
+    frame.current?.contentWindow?.postMessage({ type: "modus-doom-volume", value }, "*");
+  }, []);
   const pause = useCallback(
     () => frame.current?.contentWindow?.postMessage({ type: "modus-doom-pause" }, "*"),
     [],
@@ -57,6 +63,7 @@ export function DoomHome({
         allow="autoplay"
         className="doom-home-frame"
         sandbox="allow-scripts allow-same-origin allow-pointer-lock"
+        onLoad={() => sendVolume(volume)}
       />
       <div className="doom-home-drag app-drag" aria-hidden="true" />
       <button
@@ -68,6 +75,27 @@ export function DoomHome({
       >
         <IconLayoutSidebarLeftExpand size={21} />
       </button>
+      <fieldset className="doom-home-volume app-no-drag" aria-label="Volume do jogo">
+        <IconVolume2 aria-hidden="true" size={18} />
+        <WakeSlider
+          value={volume}
+          onChange={(next) => {
+            setVolume(next);
+            sendVolume(next);
+          }}
+          min={0}
+          max={100}
+          step={1}
+          bars={28}
+          height={32}
+          restHeight={8}
+          gap={2}
+          showValue
+          formatValue={(value) => `${value}%`}
+          ariaLabel="Volume do jogo"
+          className="doom-home-volume-slider"
+        />
+      </fieldset>
       <div className="doom-home-commands app-no-drag">
         <dl aria-label="Controles do DOOM">
           {[

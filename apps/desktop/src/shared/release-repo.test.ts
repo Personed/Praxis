@@ -16,4 +16,12 @@ describe("RELEASE_REPO", () => {
       repo: RELEASE_REPO.repo,
     });
   });
+
+  it("edits the Windows executable resources to embed the Modus icon", () => {
+    expect(builderConfig.win).toMatchObject({
+      icon: "resources/icon.ico",
+      signExecutable: false,
+    });
+    expect(builderConfig.win).not.toHaveProperty("signAndEditExecutable", false);
+  });
 });

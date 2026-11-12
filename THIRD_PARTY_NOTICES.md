@@ -404,6 +404,7 @@ SOFTWARE.
 ## React Bits
 
 - Component: [Prompt Bar](https://reactbits.dev/micro/prompt-bar), TypeScript + CSS registry variant.
+- Component: [Wake Slider](https://www.reactbits.dev/micro/wake-slider), JavaScript + CSS variant adapted to TypeScript + CSS.
 - Adapted in: `apps/desktop/src/renderer/src/components/ui/react-bits/`
 - Additional permission: the copyright holder expressly authorized redistribution of this adapted
   component as part of Modus; this release relies on that permission alongside the terms below.

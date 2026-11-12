@@ -206,7 +206,8 @@ const config: Configuration = {
   win: {
     icon: "resources/icon.ico",
     target: ["nsis"],
-    signAndEditExecutable: false,
+    // Edit executable resources but skip Authenticode signing until a certificate is configured.
+    signExecutable: false,
   },
   nsis: {
     // No spaces: GitHub rewrites spaces in asset names, which would break latest.yml.

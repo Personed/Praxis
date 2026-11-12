@@ -1,6 +1,7 @@
 import { createDoomInputController } from "./input-controller";
 import { loadDoomRuntime } from "./runtime";
 import type { DoomRuntime } from "./types";
+import { DEFAULT_DOOM_VOLUME, volumeFromPercent } from "./volume";
 import "./game-frame.css";
 
 const host = document.getElementById("game")!;
@@ -9,6 +10,7 @@ const status = document.getElementById("status")!;
 const lifecycle = new AbortController();
 let runtime: DoomRuntime | undefined;
 let pending = false;
+let gameVolume = DEFAULT_DOOM_VOLUME / 100;
 const notify = (state: string) => parent.postMessage({ type: "modus-doom", state }, "*");
 const showError = (message: string) => {
   status.textContent = message;
@@ -34,17 +36,23 @@ function activate(): void {
   pending = true;
   status.textContent = "Carregando DOOM…";
   status.hidden = false;
-  void loadDoomRuntime(host, lifecycle.signal, (message) => {
-    input.suspend();
-    runtime = undefined;
-    poster.hidden = false;
-    showError(message);
-  })
+  void loadDoomRuntime(
+    host,
+    lifecycle.signal,
+    (message) => {
+      input.suspend();
+      runtime = undefined;
+      poster.hidden = false;
+      showError(message);
+    },
+    gameVolume,
+  )
     .then((game) => {
       if (lifecycle.signal.aborted) {
         void game.dispose();
         return;
       }
+      game.setVolume(gameVolume);
       runtime = game;
       poster.hidden = true;
       input.attachRuntime(game);
@@ -67,8 +75,17 @@ host.addEventListener("keydown", (event) => {
   }
 });
 window.addEventListener("message", (event) => {
-  if (event.source !== parent || event.data?.type !== "modus-doom-pause") return;
-  input.suspend();
+  if (event.source !== parent) return;
+  if (event.data?.type === "modus-doom-pause") {
+    input.suspend();
+    return;
+  }
+  if (event.data?.type === "modus-doom-volume") {
+    const next = volumeFromPercent(event.data.value);
+    if (next === null) return;
+    gameVolume = next;
+    runtime?.setVolume(next);
+  }
 });
 window.addEventListener(
   "pagehide",

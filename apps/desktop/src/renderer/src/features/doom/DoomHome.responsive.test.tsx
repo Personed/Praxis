@@ -16,6 +16,10 @@ describe("DOOM home compact layout", () => {
     );
 
     expect(screen.getByRole("button", { name: "Abrir navegação" })).toBeTruthy();
+    expect(
+      screen.getByRole("slider", { name: "Volume do jogo" }).getAttribute("aria-valuenow"),
+    ).toBe("50");
+    expect(screen.getByRole("group", { name: "Volume do jogo" })).toBeTruthy();
     expect(screen.getByText("Mover")).toBeTruthy();
     expect(screen.getByText("Mirar")).toBeTruthy();
     expect(screen.getByText("Atirar")).toBeTruthy();
