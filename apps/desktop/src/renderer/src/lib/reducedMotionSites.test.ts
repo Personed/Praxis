@@ -303,11 +303,10 @@ function chevronCss() {
 }
 
 describe("disclosure chevrons", () => {
-  it("rotates the Trace chevron from aria-expanded without a reduced-motion transition", () => {
+  it("rotates the Trace chevron and fades under reduced motion", () => {
     const text = source("components/ui/trace.tsx");
-    expect(text).toMatch(
-      /group-aria-expanded\/trace-collapsible-trigger:rotate-90 motion-reduce:transition-none/,
-    );
+    expect(text).toContain("group-aria-expanded/trace-collapsible-trigger:rotate-90");
+    expect(text).toContain("motion-reduce:transition-reduced-fade");
   });
   it.each(CHEVRON_SITES)("%s uses .disclosure-chevron with data-open", (rel) => {
     const text = source(rel);

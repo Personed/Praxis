@@ -175,10 +175,9 @@ describe("Modus semantic design tokens", () => {
   });
 
   it("keeps the Direct Messages folder selector out of its composer footer", () => {
-    const heroTray =
-      app.split("function HeroEnvironmentTray(")[1]?.split("function WorkspaceMenu(")[0] ?? "";
+    const homeComposerFooter = app.split("footer={")[1]?.split("defaultModelId=")[0] ?? "";
 
-    expect(heroTray).not.toContain("<WorkspaceMenu");
+    expect(homeComposerFooter).not.toContain("<WorkspaceMenu");
     expect(app.match(/<WorkspaceMenu\b/g) ?? []).toHaveLength(1);
   });
 

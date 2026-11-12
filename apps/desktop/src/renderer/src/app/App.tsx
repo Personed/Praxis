@@ -1586,13 +1586,6 @@ export function App() {
                                         cwd={activeCwd}
                                         onError={setSessionCreateError}
                                       />
-                                      <WorkspaceMenu
-                                        activeWorkspace={activeWorkspace}
-                                        workspaces={workspaces}
-                                        onSelect={openNewChat}
-                                        onOpenFolder={() => void openWorkspace()}
-                                        triggerClassName={HERO_ENVIRONMENT_TRIGGER_CLASS}
-                                      />
                                     </div>
                                   }
                                   defaultModelId={model}
