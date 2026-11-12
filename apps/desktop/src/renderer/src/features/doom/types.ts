@@ -2,6 +2,7 @@ export interface DoomRuntime {
   canvas: HTMLCanvasElement;
   pause(): void;
   resume(): void;
+  setVolume(value: number): void;
   releaseInputs(): void;
   keyEvent(code: number, pressed: boolean): void;
   mouseMotion(x: number, y: number): void;

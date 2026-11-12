@@ -43,6 +43,15 @@ test("startup selects shareware level, widescreen, freelook, WASD and sound", ()
 });
 
 const { createDoomAudio, loadDoomRuntime } = await import("./runtime.ts");
+const { volumeFromPercent } = await import("./volume.ts");
+
+test("volume messages accept percentages only within the slider range", () => {
+  assert.equal(volumeFromPercent(0), 0);
+  assert.equal(volumeFromPercent(50), 0.5);
+  assert.equal(volumeFromPercent(100), 1);
+  for (const value of [-1, 101, Number.NaN, "50", null])
+    assert.equal(volumeFromPercent(value), null);
+});
 
 test("audio bridge turns worker PCM into Web Audio playback", () => {
   const sources = [];
@@ -84,7 +93,9 @@ test("audio bridge turns worker PCM into Web Audio playback", () => {
     createGain() {
       const gain = {
         gain: { value: 1 },
+        destination: undefined,
         connect(destination) {
+          gain.destination = destination;
           return destination;
         },
         disconnect() {},
@@ -105,7 +116,11 @@ test("audio bridge turns worker PCM into Web Audio playback", () => {
       return Promise.resolve();
     },
   };
-  const audio = createDoomAudio(context);
+  const audio = createDoomAudio(context, 0.5);
+  assert.equal(gains[0].gain.value, 0.5);
+  assert.equal(gains[0].destination, context.destination);
+  audio.setVolume(0.25);
+  assert.equal(gains[0].gain.value, 0.25);
   audio.play({
     audio: "play",
     sourceId: 7,
@@ -123,7 +138,8 @@ test("audio bridge turns worker PCM into Web Audio playback", () => {
   assert.equal(source.loop, true);
   assert.equal(source.loopEnd, 2 / 44100);
   assert.deepEqual([...source.buffer.data[0]], [0.5, -0.5]);
-  assert.equal(gains[0].gain.value, 0.5);
+  assert.equal(gains[1].gain.value, 0.5);
+  assert.equal(gains[1].destination, gains[0]);
   assert.equal(source.started.when, 0);
   assert.equal(source.started.offset, 0);
   assert.equal(source.started.duration, undefined);

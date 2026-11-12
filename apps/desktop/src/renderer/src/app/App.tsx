@@ -1203,7 +1203,10 @@ export function App() {
 
               <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                 <div
-                  className="app-layout-row surface-app relative flex min-h-0 min-w-0 flex-1"
+                  className={cn(
+                    "app-layout-row surface-app relative flex min-h-0 min-w-0 flex-1",
+                    isDoomHome && "doom-home-app-layout",
+                  )}
                   ref={layoutRowRef}
                   style={{
                     gap: isDoomHome ? 0 : WORKSPACE_GUTTER,
@@ -1461,7 +1464,10 @@ export function App() {
                             chat, center of the hero). */}
                         <UpdateToast
                           api={window.modus.update}
-                          className="pointer-events-auto absolute top-11 right-3 z-30"
+                          className={cn(
+                            "pointer-events-auto top-11 right-3 z-30",
+                            isDoomHome ? "fixed" : "absolute",
+                          )}
                         />
 
                         <GroupsMovedNotice

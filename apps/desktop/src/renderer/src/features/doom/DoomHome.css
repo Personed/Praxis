@@ -53,6 +53,40 @@
   outline: 2px solid #a577ff;
   outline-offset: 2px;
 }
+.doom-home-volume {
+  position: absolute;
+  top: 12px;
+  left: 68px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 210px;
+  height: 44px;
+  min-width: 0;
+  margin: 0;
+  padding: 0 10px;
+  color: #f2f4f8;
+  background: rgb(12 17 25 / 82%);
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 8px;
+  backdrop-filter: blur(12px);
+}
+.doom-home-volume > svg {
+  flex: none;
+  opacity: 0.8;
+}
+.doom-home-volume-slider {
+  min-width: 0;
+  gap: 8px;
+}
+.doom-home-volume-slider .wake-slider__track {
+  min-height: 36px;
+}
+.doom-home-volume-slider .wake-slider__value {
+  font-size: 11px;
+  opacity: 0.9;
+}
 .doom-home-commands {
   position: absolute;
   right: 14px;
@@ -98,6 +132,23 @@
 .doom-home-layer[hidden] {
   display: none;
 }
+.app-layout-row.doom-home-app-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) max-content;
+}
+.doom-home-app-layout > .doom-home-layer:not([hidden]) {
+  position: relative;
+  inset: auto;
+  grid-row: 1;
+  grid-column: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.doom-home-app-layout > [data-shell-layer="main-surface"] {
+  grid-row: 2;
+  grid-column: 1;
+}
 .doom-home-layout {
   position: relative;
 }
@@ -110,6 +161,9 @@
   background: transparent;
 }
 @media (max-height: 560px) {
+  .doom-home-stage {
+    min-height: 0;
+  }
   .doom-home-commands dl {
     display: none;
   }

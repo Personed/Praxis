@@ -52,6 +52,7 @@ export type DoomAudioMessage = {
 export type DoomAudio = {
   play(message: DoomAudioMessage): void;
   stop(sourceId: number): void;
+  setVolume(value: number): void;
   pause(): void;
   resume(): void;
   dispose(): void;
@@ -61,8 +62,11 @@ export type DoomAudio = {
  * Main-thread half of the engine's audio bridge: the worker shim captures
  * OpenAL buffers and posts them here, where a real AudioContext plays them.
  */
-export function createDoomAudio(context: AudioContext): DoomAudio {
+export function createDoomAudio(context: AudioContext, initialVolume = 1): DoomAudio {
   const sources = new Map<number, AudioBufferSourceNode>();
+  const master = context.createGain();
+  master.gain.value = clampVolume(initialVolume);
+  master.connect(context.destination);
   let paused = false;
   return {
     play(message) {
@@ -85,7 +89,7 @@ export function createDoomAudio(context: AudioContext): DoomAudio {
       source.playbackRate.value = message.playbackRate || 1;
       const gain = context.createGain();
       gain.gain.value = message.gain ?? 1;
-      source.connect(gain).connect(context.destination);
+      source.connect(gain).connect(master);
       sources.get(message.sourceId)?.stop();
       sources.set(message.sourceId, source);
       source.onended = () => {
@@ -104,6 +108,9 @@ export function createDoomAudio(context: AudioContext): DoomAudio {
       sources.get(sourceId)?.stop();
       sources.delete(sourceId);
     },
+    setVolume(value) {
+      if (Number.isFinite(value)) master.gain.value = clampVolume(value);
+    },
     pause() {
       paused = true;
       void context.suspend();
@@ -121,16 +128,21 @@ export function createDoomAudio(context: AudioContext): DoomAudio {
         }
       }
       sources.clear();
+      master.disconnect();
       void context.close();
     },
   };
 }
 
+function clampVolume(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
 /** Called inside the click gesture so the browser lets the context play. */
-function openDoomAudio(): DoomAudio | undefined {
+function openDoomAudio(initialVolume: number): DoomAudio | undefined {
   if (typeof AudioContext === "undefined") return undefined;
   try {
-    return createDoomAudio(new AudioContext());
+    return createDoomAudio(new AudioContext(), initialVolume);
   } catch {
     return undefined;
   }
@@ -140,13 +152,14 @@ export async function loadDoomRuntime(
   host: HTMLElement,
   signal: AbortSignal,
   onError?: (message: string) => void,
+  initialVolume = 1,
 ): Promise<DoomRuntime> {
   signal.throwIfAborted();
   if (typeof OffscreenCanvas === "undefined" || !("Suspending" in WebAssembly))
     throw new Error(
       "Este runtime requer WebAssembly JSPI e OffscreenCanvas. Atualize o aplicativo para executar o DOOM widescreen.",
     );
-  const audio = openDoomAudio();
+  const audio = openDoomAudio(initialVolume);
   const files: Record<string, Uint8Array> = {};
   const assets: [string, string][] = [
     ...support.map((name): [string, string] => [`/${name}`, `/doom/gzdoom/${name}`]),
@@ -319,6 +332,9 @@ export async function loadDoomRuntime(
           post({ type: "pointerlock", locked: false });
           playing = false;
         }
+      },
+      setVolume(value) {
+        audio?.setVolume(value);
       },
       resume() {
         if (!playing && !disposed) {
