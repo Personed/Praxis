@@ -6,5 +6,6 @@ members = [
     "crates/plugin-execution-supervisor",
     "crates/plugin-execution-worker",
     "crates/modus-rea-process-supervisor",
+    "apps/desktop/src-tauri",
 ]
 resolver = "3"

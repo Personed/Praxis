@@ -22,12 +22,17 @@
     "package:linux": "npm run prepare:fast-codebase && npm run build:plugin-supervisor && npm run build:rea-supervisor && electron-builder --linux --config electron-builder.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --root ../.. apps/desktop/src apps/desktop/scripts",
-    "check:case": "vitest run --root ../.. apps/desktop/scripts/case-collisions"
+    "check:case": "vitest run --root ../.. apps/desktop/scripts/case-collisions",
+    "build:renderer-web": "vite build --config vite.renderer.config.ts",
+    "dev:renderer-web": "vite --config vite.renderer.config.ts",
+    "dev:tauri": "tauri dev",
+    "build:tauri": "tauri build"
   },
   "devDependencies": {
     "@colbymchenry/codegraph": "^1.1.1",
     "@tailwindcss/node": "^4.3.0",
     "@tailwindcss/vite": "^4.3.0",
+    "@tauri-apps/cli": "^3.0.0-alpha.6",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
     "@types/node": "^24.19.1",
@@ -63,6 +68,7 @@
     "@streamdown/mermaid": "^1.0.2",
     "@tabler/icons-react": "^3.44.0",
     "@tanstack/react-virtual": "3.14.13",
+    "@tauri-apps/api": "^3.0.0-alpha.3",
     "@tryopenbot/agent-avatar": "^0.2.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-web-links": "^0.12.0",
