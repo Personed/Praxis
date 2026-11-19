@@ -2,9 +2,144 @@ use std::io::{BufRead, BufReader};
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use tauri::Manager;
+use tauri_plugin_updater::UpdaterExt;
 
 struct SidecarState {
   child: Mutex<Option<Child>>,
+}
+
+struct UpdateStateStore(Mutex<serde_json::Value>);
+
+const RELEASE_PAGE: &str = "https://github.com/Personed/Praxis/releases/latest";
+
+fn emit_update_state(app: &tauri::AppHandle, state: serde_json::Value) {
+  use tauri::Emitter;
+  if let Some(store) = app.try_state::<UpdateStateStore>() {
+    *store.0.lock().unwrap() = state.clone();
+  }
+  let _ = app.emit("update:state-event", state);
+}
+
+#[tauri::command]
+fn modus_update_get_state(state: tauri::State<'_, UpdateStateStore>) -> serde_json::Value {
+  state.0.lock().unwrap().clone()
+}
+
+#[tauri::command]
+async fn modus_update_check(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+  emit_update_state(&app, serde_json::json!({ "status": "checking" }));
+  let state = match app.updater() {
+    Ok(updater) => match updater.check().await {
+      Ok(Some(update)) => {
+        let dismissed = app
+          .try_state::<UpdateStateStore>()
+          .and_then(|s| s.0.lock().unwrap().get("dismissed").cloned())
+          .and_then(|v| v.as_str().map(str::to_owned));
+        if dismissed.as_deref() == Some(update.version.as_str()) {
+          serde_json::json!({ "status": "idle" })
+        } else {
+          serde_json::json!({
+            "status": "available",
+            "version": update.version,
+            "action": "install",
+          })
+        }
+      },
+      Ok(None) => serde_json::json!({ "status": "idle" }),
+      Err(e) => serde_json::json!({
+        "status": "failed",
+        "version": "",
+        "retryable": true,
+        "action": "install",
+        "error": e.to_string(),
+      }),
+    },
+    Err(e) => serde_json::json!({
+      "status": "failed",
+      "version": "",
+      "retryable": false,
+      "action": "download-page",
+      "error": e.to_string(),
+    }),
+  };
+  emit_update_state(&app, state.clone());
+  Ok(state)
+}
+
+#[tauri::command]
+async fn modus_update_install(app: tauri::AppHandle) -> Result<(), String> {
+  let updater = app.updater().map_err(|e| e.to_string())?;
+  let update = updater
+    .check()
+    .await
+    .map_err(|e| e.to_string())?
+    .ok_or_else(|| "no update available".to_string())?;
+  let version = update.version.clone();
+  let app2 = app.clone();
+  update
+    .download_and_install(
+      move |chunk, total| {
+        let percent = total
+          .filter(|t| *t > 0)
+          .map(|t| (chunk as f64 / t as f64) * 100.0)
+          .unwrap_or(0.0);
+        emit_update_state(
+          &app2,
+          serde_json::json!({ "status": "downloading", "version": version, "percent": percent }),
+        );
+      },
+      {
+        let app3 = app.clone();
+        let version = update.version.clone();
+        move || {
+          emit_update_state(
+            &app3,
+            serde_json::json!({ "status": "ready", "version": version }),
+          );
+        }
+      },
+    )
+    .await
+    .map_err(|e| {
+      emit_update_state(
+        &app,
+        serde_json::json!({
+          "status": "failed", "version": update.version,
+          "retryable": true, "action": "install", "error": e.to_string(),
+        }),
+      );
+      e.to_string()
+    })?;
+  Ok(())
+}
+
+#[tauri::command]
+fn modus_update_dismiss(app: tauri::AppHandle) {
+  if let Some(store) = app.try_state::<UpdateStateStore>() {
+    let mut state = store.0.lock().unwrap();
+    let version = state.get("version").cloned();
+    if let Some(v) = version {
+      state.as_object_mut().unwrap().insert("dismissed".into(), v);
+    }
+    *state = serde_json::json!({ "status": "idle", "dismissed": state.get("dismissed").cloned().unwrap_or(serde_json::Value::Null) });
+  }
+}
+
+#[tauri::command]
+fn modus_update_restart(app: tauri::AppHandle) {
+  app.restart();
+}
+
+#[tauri::command]
+fn modus_update_open_release() {
+  let opener = if cfg!(target_os = "macos") {
+    "open"
+  } else if cfg!(target_os = "windows") {
+    "explorer"
+  } else {
+    "xdg-open"
+  };
+  let _ = Command::new(opener).arg(RELEASE_PAGE).spawn();
 }
 
 fn random_token() -> String {
@@ -157,6 +292,9 @@ pub fn run() {
             .build(),
         )?;
       }
+      app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+      app.handle().plugin(tauri_plugin_process::init())?;
+      app.manage(UpdateStateStore(Mutex::new(serde_json::json!({ "status": "idle" }))));
 
       let (child, port, token) = spawn_sidecar()
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
@@ -185,6 +323,14 @@ pub fn run() {
         .build()?;
       Ok(())
     })
+    .invoke_handler(tauri::generate_handler![
+      modus_update_get_state,
+      modus_update_check,
+      modus_update_install,
+      modus_update_dismiss,
+      modus_update_restart,
+      modus_update_open_release,
+    ])
     .build(tauri::generate_context!())
     .expect("error while building tauri application")
     .run(|app_handle, event| {

@@ -72,8 +72,30 @@ export function createWsTransport(): ModusTransport | null {
     argv: [],
   };
 
+  // Channels the Tauri shell owns (updater engine). Everything else goes to
+  // the sidecar over the WebSocket.
+  const tauriCommands: Record<string, string> = {
+    "update:get-state": "modus_update_get_state",
+    "update:install": "modus_update_install",
+    "update:retry": "modus_update_check",
+    "update:restart-now": "modus_update_restart",
+    "update:open-release-page": "modus_update_open_release",
+    "update:dismiss": "modus_update_dismiss",
+  };
+  const tauriEvents = new Set(["update:state-event"]);
+  let tauriEventHooked = false;
+
+  async function tauriInvoke<T>(command: string): Promise<T> {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return (await invoke(command)) as T;
+  }
+
   return {
     invoke: async <T = unknown>(channel: string, ...args: unknown[]) => {
+      const command = tauriCommands[channel];
+      if (command) {
+        return await tauriInvoke<T>(command);
+      }
       await connect(rpc.port, rpc.token);
       const id = ++nextId;
       // JSON can't represent undefined: send a sentinel the server maps back.
@@ -84,6 +106,16 @@ export function createWsTransport(): ModusTransport | null {
       });
     },
     on: (channel: string, listener: ModusListener) => {
+      if (tauriEvents.has(channel) && !tauriEventHooked) {
+        tauriEventHooked = true;
+        void import("@tauri-apps/api/event").then(({ listen }) =>
+          listen(channel, (evt) => {
+            for (const l of listeners.get(channel) ?? []) {
+              l({}, evt.payload);
+            }
+          }),
+        );
+      }
       let set = listeners.get(channel);
       if (!set) {
         set = new Set();
