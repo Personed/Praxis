@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { isFeatureFlagEnabled } from "../agent/harness/feature-flags";
+import { rerank03CacheIdentity } from "./embed-cache";
 import { LocalModelError, type LocalModelFailure, localModelFailureOf } from "./errors";
 import { manifestBytes, RERANK03_MODEL, resolveLocalModelsBaseUrl } from "./manifest";
 import { ensureModelFiles } from "./model-download";
@@ -84,6 +85,7 @@ export type RankerBackend = {
   load(
     dir: string,
     cacheDir?: string,
+    extra?: { cacheIdentity?: string; docMaxLength?: number; queryMaxLength?: number },
   ): Promise<{ rssBytes: number; loadMs: number; cachedDocs?: number }>;
   warm(docs: WorkerDoc[]): Promise<void>;
   select(input: {
@@ -256,7 +258,11 @@ export function createLocalToolRanker(deps: LocalToolRankerDeps): LocalToolRanke
         return status;
       }
       setStatus({ state: "loading" });
-      const loaded = await backend.load(deps.dir, deps.cacheDir);
+      const loaded = await backend.load(deps.dir, deps.cacheDir, {
+        cacheIdentity: rerank03CacheIdentity(),
+        docMaxLength: RERANK03_MODEL.docMaxLength,
+        queryMaxLength: RERANK03_MODEL.queryMaxLength,
+      });
       attempts = 0;
       setStatus({ state: "ready", loadMs: loaded.loadMs, utilityRssBytes: loaded.rssBytes });
       log(

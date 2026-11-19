@@ -15,6 +15,8 @@ afterEach(() => {
 describe("local models startup", () => {
   it("filter on by default: startup probes in the model process when the platform is available", async () => {
     vi.stubEnv("MODUS_LOCAL_TOOL_FILTER", "");
+    // Force the JS worker so fork (not the Rust binary) is what startup spawns.
+    vi.stubEnv("MODUS_TOOL_FILTER_BIN", "none");
     const { startLocalModels, getToolFilterController, stopLocalModels } = await import(
       "./startup"
     );

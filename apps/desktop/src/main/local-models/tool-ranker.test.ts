@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LocalModelError } from "./errors";
-import { manifestBytes } from "./manifest";
+import { manifestBytes, RERANK03_MODEL } from "./manifest";
 import {
   createLocalToolRanker,
   type EnsureFiles,
@@ -353,6 +353,11 @@ describe("local tool ranker (main orchestrator)", () => {
     expect(backend.load).toHaveBeenCalledWith(
       "/tmp/modus-models-test",
       "/u/local-models/tool-embed-cache",
+      expect.objectContaining({
+        cacheIdentity: expect.any(String),
+        docMaxLength: RERANK03_MODEL.docMaxLength,
+        queryMaxLength: RERANK03_MODEL.queryMaxLength,
+      }),
     );
   });
 

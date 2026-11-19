@@ -9,8 +9,20 @@ export type WorkerDoc = { name: string; doc: string };
 export type MainToWorker =
   /** Load onnxruntime-node and run a tiny in-memory graph: the real availability probe. */
   | { type: "probe"; id: number }
-  /** `cacheDir`: the on-disk doc-embedding cache (embed-cache.ts); absent = memory only. */
-  | { type: "load"; id: number; dir: string; cacheDir?: string }
+  /**
+   * `cacheDir`: the on-disk doc-embedding cache (embed-cache.ts); absent = memory only.
+   * `cacheIdentity`/`docMaxLength`/`queryMaxLength` let the Rust worker reuse the
+   * same manifest-pinned values (the JS worker derives them itself).
+   */
+  | {
+      type: "load";
+      id: number;
+      dir: string;
+      cacheDir?: string;
+      cacheIdentity?: string;
+      docMaxLength?: number;
+      queryMaxLength?: number;
+    }
   /** Embed tool docs ahead of time so a selection only embeds the query. */
   | { type: "warm"; id: number; docs: WorkerDoc[] }
   /**

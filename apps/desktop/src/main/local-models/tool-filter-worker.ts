@@ -61,6 +61,7 @@ export function createWorkerHandler(
   let embedder: LocalEmbedder | null = null;
   let cache: EmbedCache | null = null;
   let cachedOnLoad = 0;
+  let docMaxLength: number = RERANK03_MODEL.docMaxLength;
   const docVectors = new Map<string, Float32Array>();
   const rss = () => process.memoryUsage().rss;
   const loadEmbedder =
@@ -78,7 +79,7 @@ export function createWorkerHandler(
         docVectors.set(doc, cached);
         continue;
       }
-      const vector = await model.embed(doc, RERANK03_MODEL.docMaxLength);
+      const vector = await model.embed(doc, docMaxLength);
       docVectors.set(doc, vector);
       cache?.set(doc, vector);
       added++;
@@ -122,6 +123,7 @@ export function createWorkerHandler(
         case "load": {
           const started = performance.now();
           if (!embedder) {
+            docMaxLength = message.docMaxLength ?? RERANK03_MODEL.docMaxLength;
             try {
               embedder = await loadEmbedder(message.dir);
             } catch (error) {
@@ -131,14 +133,14 @@ export function createWorkerHandler(
             }
             const probe = await embedder.embed(
               "warm-up: list the files in src",
-              RERANK03_MODEL.queryMaxLength,
+              message.queryMaxLength ?? RERANK03_MODEL.queryMaxLength,
             );
             if (message.cacheDir) {
               // The dimension comes from the model itself: a cache written for
               // another size is discarded, never used.
               cache = new EmbedCache(
                 message.cacheDir,
-                deps.cacheIdentity ?? rerank03CacheIdentity(),
+                deps.cacheIdentity ?? message.cacheIdentity ?? rerank03CacheIdentity(),
                 probe.length,
               );
               cachedOnLoad = cache.load().entries;

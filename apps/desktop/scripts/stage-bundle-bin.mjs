@@ -22,6 +22,7 @@ const copies = [
     "modus-rea-process-supervisor",
     "modus-plugin-execution-supervisor",
     "modus-plugin-worker",
+    "modus-tool-filter",
   ].map((name) => ({
     from: join(TARGET_RELEASE, exe(name)),
     to: exe(name),
@@ -75,9 +76,62 @@ if (existsSync(ort)) {
       recursive: true,
     });
   }
+  // libonnxruntime also serves the Rust modus-tool-filter binary (load-dynamic).
   for (const dep of ["onnxruntime-common", "adm-zip", "global-agent"]) {
     const depSrc = join(nm, dep);
     if (existsSync(depSrc)) cpSync(depSrc, join(sidecarNm, dep), { recursive: true });
   }
   console.log(`staged onnxruntime-node (${process.platform}/${process.arch})`);
+}
+
+// chrome-headless-shell: ship a Chrome for Testing build so packaged installs
+// don't need a system Chrome. Flattened into <resources>/bin/chrome-headless-shell/.
+// Skip with MODUS_SKIP_CHROMIUM_DOWNLOAD=1 (offline/dev runs).
+if (process.env.MODUS_SKIP_CHROMIUM_DOWNLOAD !== "1") {
+  const cftPlatforms = {
+    "linux-x64": "linux64",
+    "win32-x64": "win64",
+    "darwin-arm64": "mac-arm64",
+    "darwin-x64": "mac-x64",
+  };
+  const cftPlatform =
+    process.env.MODUS_CFT_PLATFORM ?? cftPlatforms[`${process.platform}-${process.arch}`];
+  if (cftPlatform) {
+    try {
+      const versions = await (
+        await fetch(
+          "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json",
+        )
+      ).json();
+      const download = versions.channels.Stable.downloads["chrome-headless-shell"].find(
+        (d) => d.platform === cftPlatform,
+      );
+      if (!download) throw new Error(`no chrome-headless-shell for ${cftPlatform}`);
+      console.log(
+        `downloading chrome-headless-shell ${versions.channels.Stable.version} (${cftPlatform})`,
+      );
+      const zipPath = join(OUT, ".chrome-headless-shell.zip");
+      const buf = Buffer.from(await (await fetch(download.url)).arrayBuffer());
+      const { writeFileSync, rmSync, chmodSync } = await import("node:fs");
+      writeFileSync(zipPath, buf);
+      const { createRequire } = await import("node:module");
+      const AdmZip = createRequire(import.meta.url)("adm-zip");
+      const tmp = join(OUT, ".chs-tmp");
+      new AdmZip(zipPath).extractAllTo(tmp, true);
+      const inner = join(tmp, `chrome-headless-shell-${cftPlatform}`);
+      cpSync(inner, join(OUT, "chrome-headless-shell"), { recursive: true });
+      if (process.platform !== "win32") {
+        chmodSync(join(OUT, "chrome-headless-shell", "chrome-headless-shell"), 0o755);
+      }
+      rmSync(zipPath, { force: true });
+      rmSync(tmp, { recursive: true, force: true });
+      console.log("staged chrome-headless-shell");
+    } catch (error) {
+      console.error(`chrome-headless-shell staging failed: ${error}`);
+      console.error(
+        "set MODUS_SKIP_CHROMIUM_DOWNLOAD=1 to skip, or MODUS_CHROMIUM_PATH at runtime",
+      );
+      process.exit(1);
+    }
+  }
 }

@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { utilityProcess } from "electron";
 import { LocalModelError } from "./errors";
 import type { MainToWorker, SelectReply, WorkerDoc, WorkerToMain } from "./worker-protocol";
@@ -91,9 +92,10 @@ export class ToolFilterHost {
   async load(
     dir: string,
     cacheDir?: string,
+    extra?: { cacheIdentity?: string; docMaxLength?: number; queryMaxLength?: number },
   ): Promise<{ rssBytes: number; loadMs: number; cachedDocs: number }> {
     const reply = await this.request(
-      { type: "load", dir, ...(cacheDir ? { cacheDir } : {}) },
+      { type: "load", dir, ...(cacheDir ? { cacheDir } : {}), ...extra },
       this.loadTimeoutMs,
       true,
     );
@@ -257,6 +259,59 @@ export class ToolFilterHost {
     if (this.idleTimer) clearTimeout(this.idleTimer);
     this.idleTimer = null;
   }
+}
+
+/**
+ * Native modus-tool-filter binary (Rust port of the JS worker). Same protocol
+ * as the utilityProcess, over newline-delimited JSON on stdin/stdout.
+ */
+export function spawnBinaryModelProcess(binPath: string): ModelProcess {
+  const child = spawn(binPath, [], {
+    stdio: ["pipe", "pipe", "inherit"],
+    env: { ...process.env },
+  });
+  let buffer = "";
+  const listeners = new Set<(message: WorkerToMain) => void>();
+  child.stdout?.setEncoding("utf8");
+  child.stdout?.on("data", (chunk: string) => {
+    buffer += chunk;
+    for (;;) {
+      const newline = buffer.indexOf("\n");
+      if (newline < 0) break;
+      const line = buffer.slice(0, newline);
+      buffer = buffer.slice(newline + 1);
+      if (!line.trim()) continue;
+      try {
+        const message = JSON.parse(line) as WorkerToMain;
+        for (const listener of listeners) listener(message);
+      } catch {
+        // non-JSON noise from the native side; ignore
+      }
+    }
+  });
+  return {
+    get pid() {
+      return child.pid;
+    },
+    postMessage: (message) => {
+      child.stdin?.write(`${JSON.stringify(message)}\n`);
+    },
+    onMessage: (handler) => listeners.add(handler),
+    onExit: (handler) => child.on("exit", (code) => handler(code)),
+    kill: () => {
+      const pid = child.pid;
+      child.kill();
+      if (pid !== undefined && process.platform !== "win32") {
+        setTimeout(() => {
+          try {
+            process.kill(pid, "SIGKILL");
+          } catch {
+            // already exited
+          }
+        }, 2_000).unref();
+      }
+    },
+  };
 }
 
 /** Electron utilityProcess running the bundled worker (out/main/tool-filter-worker.js). */

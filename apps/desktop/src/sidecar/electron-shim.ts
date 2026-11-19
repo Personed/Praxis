@@ -4,7 +4,13 @@
  * Window/webContents send() broadcasts events over the sidecar RPC.
  */
 
-import { type ChildProcess, execFile, type Serializable, spawn } from "node:child_process";
+import {
+  type ChildProcess,
+  execFile,
+  execFileSync,
+  type Serializable,
+  spawn,
+} from "node:child_process";
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -552,10 +558,72 @@ export const shell = {
 };
 
 // ---- nativeTheme ----
+// Probes the real OS appearance (gsettings / defaults / registry) and polls
+// while themeSource is "system" so "updated" fires on OS theme changes.
+function probeSystemDark(): boolean {
+  try {
+    if (process.platform === "darwin") {
+      return execFileSync("defaults", ["read", "-g", "AppleInterfaceStyle"], {
+        encoding: "utf8",
+      })
+        .trim()
+        .startsWith("Dark");
+    }
+    if (process.platform === "win32") {
+      const out = execFileSync(
+        "reg",
+        [
+          "query",
+          "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+          "/v",
+          "AppsUseLightTheme",
+        ],
+        { encoding: "utf8" },
+      );
+      return !/0x1/i.test(out);
+    }
+    const out = execFileSync("gsettings", ["get", "org.gnome.desktop.interface", "color-scheme"], {
+      encoding: "utf8",
+    }).trim();
+    return out.includes("prefer-dark");
+  } catch {
+    return true;
+  }
+}
+
 class NativeThemeShim extends EventEmitter {
-  themeSource: "system" | "light" | "dark" = "system";
-  shouldUseDarkColors = true;
-  shouldUseDarkColorsForSystemIntegratedUI = true;
+  #source: "system" | "light" | "dark" = "system";
+  #systemDark = probeSystemDark();
+
+  constructor() {
+    super();
+    const timer = setInterval(() => {
+      if (this.#source !== "system") return;
+      const dark = probeSystemDark();
+      if (dark !== this.#systemDark) {
+        this.#systemDark = dark;
+        this.emit("updated");
+      }
+    }, 5_000);
+    timer.unref();
+  }
+
+  get themeSource(): "system" | "light" | "dark" {
+    return this.#source;
+  }
+  set themeSource(source: "system" | "light" | "dark") {
+    if (source === this.#source) return;
+    this.#source = source;
+    this.#systemDark = probeSystemDark();
+    this.emit("updated");
+  }
+
+  get shouldUseDarkColors(): boolean {
+    return this.#source === "dark" || (this.#source === "system" && this.#systemDark);
+  }
+  get shouldUseDarkColorsForSystemIntegratedUI(): boolean {
+    return this.shouldUseDarkColors;
+  }
   shouldDifferentiateWithoutColor = false;
   shouldUseHighContrastColors = false;
   shouldUseInvertedColorScheme = false;
@@ -566,7 +634,24 @@ export const nativeTheme = new NativeThemeShim();
 export type NativeTheme = NativeThemeShim;
 
 // ---- powerMonitor ----
+// Node has no suspend/resume hook; detect sleep by watching for clock jumps
+// between timer ticks (interval that should fire every 15s taking minutes).
 class PowerMonitorShim extends EventEmitter {
+  #lastTick = Date.now();
+
+  constructor() {
+    super();
+    const timer = setInterval(() => {
+      const now = Date.now();
+      if (now - this.#lastTick > 45_000) {
+        this.emit("suspend");
+        this.emit("resume");
+      }
+      this.#lastTick = now;
+    }, 15_000);
+    timer.unref();
+  }
+
   getSystemIdleTime() {
     return 0;
   }

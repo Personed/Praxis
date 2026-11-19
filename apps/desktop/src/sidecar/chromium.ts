@@ -11,8 +11,16 @@ import { CdpConnection } from "./cdp-client";
 
 const dataRoot = join(process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "modus");
 
+const bundledChromium = () => {
+  const resourcesPath = process.resourcesPath;
+  if (!resourcesPath) return undefined;
+  const name = process.platform === "win32" ? "chrome-headless-shell.exe" : "chrome-headless-shell";
+  return join(resourcesPath, "bin", "chrome-headless-shell", name);
+};
+
 const CANDIDATES = [
   process.env.MODUS_CHROMIUM_PATH,
+  bundledChromium(),
   "google-chrome",
   "google-chrome-stable",
   "chromium",

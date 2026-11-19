@@ -340,12 +340,16 @@ pub fn run() {
       let webview_url = tauri::WebviewUrl::External(
         format!("http://127.0.0.1:{}/", frontend_port).parse().unwrap(),
       );
-      tauri::WebviewWindowBuilder::new(app, "main", webview_url)
+      let window = tauri::WebviewWindowBuilder::new(app, "main", webview_url)
         .title("Modus")
         .inner_size(1440.0, 900.0)
         .resizable(true)
         .initialization_script(&init_script)
         .build()?;
+      // Standard OS menu (App/Edit/View/Window/Help) — OS-localized predefined
+      // items, restores the accelerators the Electron Menu provided.
+      let menu = tauri::menu::Menu::default(&app.handle())?;
+      window.set_menu(menu)?;
       Ok(())
     })
     .invoke_handler(tauri::generate_handler![
