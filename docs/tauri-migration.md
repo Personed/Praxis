@@ -32,10 +32,14 @@ Tauri 3 shell (Rust)          Node sidecar (TS, Electron-free)
 - **Sidecar OS services real**: `dialog.showOpenDialog`/`showSaveDialog` via zenity/osascript; `Notification` via notify-send/osascript/PowerShell; `shell.open*` via xdg-open/open/explorer; `safeStorage` AES-GCM keyed by a machine key in userData; `net.fetch` → global fetch; `utilityProcess.fork` → `spawn(node, [worker], {ipc})`.
 - **Updater moved to the shell**: `tauri-plugin-updater` 3.0.0-alpha.3 + `tauri-plugin-process` registered in `src-tauri`; commands `modus_update_{get_state,check,install,dismiss,restart,open_release}` emit `update:state-event` to the webview (same UpdateState contract). `ws-transport` routes `update:*` invoke/event channels to `@tauri-apps/api` (everything else still goes to the sidecar). Signing keypair generated at `~/.tauri/modus-updater.key[.pub]` — pubkey committed in `tauri.conf.json`; **private key + password must go to CI secrets (`TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`) before releases ship**. Endpoint: `releases/latest/download/latest.json` on Personed/Praxis.
 
+- **Electron removed from runtime + build** (`e001a899`): `src/main/index.ts`, `src/preload/index.ts`, `electron.vite.config.ts`, `electron-builder.config.ts`, package-mac/package-win/release workflows, and the whole electron-updater engine (`electron-updater-source`, `mac-zip-installer`, `mac-install-*`) deleted. `update-service.ts` reduced to the UI snapshot save/restore + an idle `UpdateIpcService` facade (channels route to the Tauri shell). `electron` stays in devDependencies **for types only** — ~57 main files `import ... from "electron"`; the sidecar esbuild aliases them to `electron-shim.ts` at runtime. Full removal needs porting the main process's `Electron.*` type usages to shim types.
+- `RELEASE_REPO` now `{owner:"Personed", repo:"Praxis"}` (the fork); `release-repo.test.ts` validates it against `tauri.conf.json`'s updater endpoint.
+
 ## Remaining (order)
-4. Replace Electron-only features: `protocol.handle` (doom scheme; renderer already falls back to /doom.html — verify before dropping), app menu (`application-menu` — Tauri menu in lib.rs if wanted), `nativeTheme`/`powerMonitor` (stubs OK).
-5. Port-to-Rust candidates (later, flag by flag): PTY (crates/pty-host exists), SQLite, ONNX tool filter, codegraph.
-6. Remove Electron: drop electron/electron-vite/electron-builder deps, `src/main/index.ts`+preload electron entry, electron.vite.config.ts, electron-builder.config.ts, workflows packaging.
+4. Replace Electron-only features: `protocol.handle` (doom scheme; renderer already falls back to /doom.html under http — verified), app menu (`application-menu` — Tauri menu in lib.rs if wanted), `nativeTheme`/`powerMonitor` (stubs OK).
+5. CI for Tauri release (new workflow replacing deleted release.yml): `tauri build` per-OS matrix + `TAURI_SIGNING_PRIVATE_KEY[_PASSWORD]` secrets + publish `latest.json` to the release.
+6. Port-to-Rust candidates (later, flag by flag): PTY (crates/pty-host exists), SQLite, ONNX tool filter, codegraph.
+7. (Optional) drop the `electron` types devDep: port `Electron.*` type usages in src/main to shim-local types.
 
 ## Gotchas discovered
 
