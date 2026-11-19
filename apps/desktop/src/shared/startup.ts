@@ -11,6 +11,11 @@ export type StartupMilestone =
   | "main.window-created"
   | "main.dom-ready"
   | "main.ready-to-show"
+  | "sidecar.entry"
+  | "sidecar.rpc-ready"
+  | "sidecar.db-open"
+  | "sidecar.ipc-registered"
+  | "sidecar.ready"
   | StartupRendererMilestone;
 
 export type StartupMetricInput = {

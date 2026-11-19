@@ -8,15 +8,7 @@
     "devUrl": "http://localhost:5173"
   },
   "app": {
-    "windows": [
-      {
-        "title": "Modus",
-        "width": 1440,
-        "height": 900,
-        "resizable": true,
-        "fullscreen": false
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null
     }

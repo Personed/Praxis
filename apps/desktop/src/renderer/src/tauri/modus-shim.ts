@@ -7,6 +7,9 @@
  * Replace per-namespace with real `invoke()` wiring as services are ported.
  */
 
+import { createModusApi } from "../../../preload/api";
+import { createWsTransport } from "./ws-transport";
+
 declare global {
   interface Window {
     __TAURI_INTERNALS__?: unknown;
@@ -18,7 +21,7 @@ function inTauri(): boolean {
 }
 
 function stubFor(path: string): unknown {
-  const fn = function () {};
+  const fn = () => {};
   return new Proxy(fn, {
     get(_target, prop) {
       // Keep the proxy non-thenable so `await`/`Promise.all` treat it as a value.
@@ -82,7 +85,11 @@ function installErrorOverlay(): void {
   );
   const orig = console.error;
   console.error = (...args: unknown[]) => {
-    add(`[console.error] ${args.map(String).join(" ")}`);
+    add(
+      `[console.error] ${args
+        .map((a) => (a instanceof Error ? `${a.name}: ${a.message}\n${a.stack ?? ""}` : String(a)))
+        .join(" ")}`,
+    );
     orig.apply(console, args);
   };
   document.addEventListener("DOMContentLoaded", () => {
@@ -108,6 +115,17 @@ export function installModusShim(): void {
   }
   installIdleCallbackPolyfill();
   installErrorOverlay();
+
+  // When the Tauri shell injected sidecar connection info, install the real API
+  // (synchronously, so first paint reads the real bridges).
+  const transport = createWsTransport();
+  if (transport) {
+    Object.defineProperty(window, "modus", {
+      value: createModusApi(transport),
+      configurable: true,
+    });
+    return;
+  }
 
   // A namespace = concrete overrides + stub fallback for everything else.
   const namespace = (name: string, backing: Record<string, unknown>) =>

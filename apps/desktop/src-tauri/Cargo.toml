@@ -24,3 +24,4 @@ log = "0.4"
 tauri = { version = "3.0.0-alpha.6", features = [] }
 tauri-runtime-wry = { version = "3.0.0-alpha.6" }
 tauri-plugin-log = "3.0.0-alpha.1"
+tiny_http = "0.12"
