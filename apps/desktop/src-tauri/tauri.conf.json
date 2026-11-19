@@ -1,7 +1,7 @@
 {
   "$schema": "../../../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Modus",
-  "version": "0.1.21",
+  "version": "0.2.0",
   "identifier": "dev.modus.desktop",
   "build": {
     "frontendDist": "../out/renderer-web",
