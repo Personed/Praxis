@@ -16,9 +16,7 @@
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZFRUE0MEUzNkNBRDU4QUMKUldTc1dLMXM0MERxL25pbGJtWXBKSHAvaUxTVEVEZUttY0t0VllwQ3pxdVRieXVjMGExYVlXQmEK",
-      "endpoints": [
-        "https://github.com/Personed/Praxis/releases/latest/download/latest.json"
-      ]
+      "endpoints": ["https://github.com/Personed/Praxis/releases/latest/download/latest.json"]
     }
   },
   "bundle": {
@@ -27,7 +25,11 @@
     "resources": {
       "../out/sidecar": "sidecar",
       "../out/renderer-web": "renderer",
-      "../out/bundle-bin": "bin"
+      "../out/bundle-bin": "bin",
+      "../resources/skills": "skills",
+      "../resources/licenses": "licenses",
+      "../../../LICENSE": "LICENSE",
+      "../../../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md"
     },
     "icon": [
       "icons/32x32.png",

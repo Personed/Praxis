@@ -124,7 +124,7 @@ describe("model catalog", () => {
     // The catalog sets every model's baseUrl: the old owner (stoltembergg-png) can now
     // be registered by anyone, so it must never be the source again.
     expect(DEFAULT_CATALOG_URL).toBe(
-      "https://raw.githubusercontent.com/Stoltembergg/modus/automation/model-catalog/catalog/models.json",
+      "https://raw.githubusercontent.com/Personed/Praxis/automation/model-catalog/catalog/models.json",
     );
     const directory = await mkdtemp(join(tmpdir(), "modus-model-catalog-"));
     const fetchMock = vi.fn(async () => new Response(JSON.stringify(catalog), { status: 200 }));

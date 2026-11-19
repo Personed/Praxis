@@ -5,12 +5,9 @@
     "paths": {
       "@renderer/*": ["./src/renderer/src/*"],
       "@preload/*": ["./src/preload/*"],
-      "@main/*": ["./src/main/*"]
+      "@main/*": ["./src/main/*"],
+      "electron": ["./src/sidecar/electron-shim.ts"]
     }
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "scripts/case-collisions*.ts"
-  ]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "scripts/case-collisions*.ts"]
 }

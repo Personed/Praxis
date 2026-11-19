@@ -2,17 +2,21 @@ import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import builderConfig from "../../electron-builder.config";
 
-// electron-builder resolves `from` against apps/desktop (its cwd), two levels up from here.
+// Tauri resolves bundle.resources paths against src-tauri (its cwd), three
+// levels up from this test file.
 const desktopDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const tauriDir = join(desktopDir, "src-tauri");
 const repoRoot = resolve(desktopDir, "../..");
 
-type ResourceEntry = { from?: string; to?: string };
+const bundleResources = (
+  JSON.parse(readFileSync(join(tauriDir, "tauri.conf.json"), "utf8")) as {
+    bundle: { resources: Record<string, string> };
+  }
+).bundle.resources;
 
-function extraResource(to: string): ResourceEntry | undefined {
-  const entries = (builderConfig.extraResources ?? []) as ResourceEntry[];
-  return entries.find((entry) => typeof entry === "object" && entry.to === to);
+function resourceFrom(to: string): string | undefined {
+  return Object.entries(bundleResources).find(([, target]) => target === to)?.[0];
 }
 
 describe("packaged license notices", () => {
@@ -22,14 +26,14 @@ describe("packaged license notices", () => {
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
   ])("ships the repo-root %s at the top of the app resources", (file) => {
-    const entry = extraResource(file);
-    expect(entry).toBeDefined();
-    const from = resolve(desktopDir, entry?.from ?? "");
-    expect(from).toBe(join(repoRoot, file));
-    expect(readFileSync(from, "utf8").length).toBeGreaterThan(0);
+    const from = resourceFrom(file);
+    expect(from).toBeDefined();
+    const resolved = resolve(tauriDir, from ?? "");
+    expect(resolved).toBe(join(repoRoot, file));
+    expect(readFileSync(resolved, "utf8").length).toBeGreaterThan(0);
   });
 
   it("keeps shipping the vendored MIT licenses directory", () => {
-    expect(extraResource("licenses")).toMatchObject({ from: "resources/licenses" });
+    expect(resourceFrom("licenses")).toBe("../resources/licenses");
   });
 });

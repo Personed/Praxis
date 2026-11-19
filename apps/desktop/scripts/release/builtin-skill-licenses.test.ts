@@ -3,7 +3,13 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import builderConfig from "../../electron-builder.config";
+
+const tauriConfig = JSON.parse(
+  readFileSync(
+    join(resolve(dirname(fileURLToPath(import.meta.url)), "../.."), "src-tauri", "tauri.conf.json"),
+    "utf8",
+  ),
+) as { bundle: { resources: Record<string, string> } };
 
 const desktopDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const repoRoot = resolve(desktopDir, "../..");
@@ -82,9 +88,10 @@ describe("built-in skill licenses", () => {
   });
 
   it("packages the skills folder (licenses included) into the app resources", () => {
-    const entries = (builderConfig.extraResources ?? []) as Array<{ from?: string; to?: string }>;
-    expect(entries.find((entry) => entry.to === "skills")).toMatchObject({
-      from: "resources/skills",
-    });
+    expect(
+      (tauriConfig as { bundle: { resources: Record<string, string> } }).bundle.resources[
+        "../resources/skills"
+      ],
+    ).toBe("skills");
   });
 });

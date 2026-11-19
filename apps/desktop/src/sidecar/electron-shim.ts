@@ -8,7 +8,7 @@ import { type ChildProcess, execFile, type Serializable, spawn } from "node:chil
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir, hostname, tmpdir, userInfo } from "node:os";
+import { homedir, hostname, release as osRelease, tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
 
 // ---- broadcast hook: rpc.ts registers the socket broadcast via bus.ts ----
@@ -25,6 +25,20 @@ mkdirSync(dataRoot, { recursive: true });
 if (process.env.MODUS_RESOURCES_PATH) {
   (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath =
     process.env.MODUS_RESOURCES_PATH;
+}
+if (!process.resourcesPath) {
+  (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath = join(
+    process.execPath,
+    "..",
+    "..",
+    "resources",
+  );
+}
+// Electron exposes process.getSystemVersion(); keep parity for callers that
+// log the OS release (sidecar boot, main window diagnostics).
+if (typeof process.getSystemVersion !== "function") {
+  (process as NodeJS.Process & { getSystemVersion?: () => string }).getSystemVersion = () =>
+    osRelease();
 }
 
 class AppShim extends EventEmitter {
@@ -81,7 +95,11 @@ class AppShim extends EventEmitter {
   getName(): string {
     return "Modus";
   }
+  get name(): string {
+    return "Modus";
+  }
   setName(_name: string): void {}
+  setAboutPanelOptions(_o: unknown): void {}
   getAppPath(): string {
     return process.cwd();
   }
@@ -129,6 +147,29 @@ class AppShim extends EventEmitter {
   override once = super.once.bind(this);
 }
 export const app = new AppShim();
+export type App = AppShim;
+
+declare global {
+  // Electron augments process at runtime; the shim keeps the same surface.
+  namespace NodeJS {
+    interface Process {
+      resourcesPath: string;
+      getSystemVersion(): string;
+    }
+  }
+}
+
+// ---- Debugger (declared before WebContents so field init sees it) ----
+export class Debugger extends EventEmitter {
+  attach(_version?: string): void {}
+  detach(): void {}
+  isAttached(): boolean {
+    return false;
+  }
+  sendCommand(_c: string, _p?: unknown, _sessionId?: unknown): Promise<unknown> {
+    return Promise.resolve({});
+  }
+}
 
 // ---- webContents ----
 let wcId = 0;
@@ -137,7 +178,7 @@ export class WebContents extends EventEmitter {
   mainFrame = { url: "http://localhost/" };
   session = { getUserAgent: () => "", setUserAgent(_ua: string) {} };
   navigationHistory = {
-    getAllEntries() {
+    getAllEntries(): { url: string; title: string }[] {
       return [];
     },
     goBack() {},
@@ -151,8 +192,8 @@ export class WebContents extends EventEmitter {
     clear() {},
     restore(_e: unknown) {},
   };
-  debugger = { attach() {}, detach() {}, sendCommand: async () => ({}) };
-  send(channel: string, ...args: unknown[]): void {
+  readonly debugger = new Debugger();
+  send(channel: string, ...args: any[]): void {
     broadcastEvent(channel, args.length <= 1 ? args[0] : args);
   }
   postMessage(_channel: string, _payload: unknown, _t?: unknown[]): void {
@@ -188,8 +229,16 @@ export class WebContents extends EventEmitter {
     );
   }
   insertText(_t: string): void {}
-  setWindowOpenHandler(_h: unknown): void {}
-  capturePage(_r?: unknown): Promise<NativeImage> {
+  insertCSS(_css: string, _options?: unknown): Promise<string> {
+    return Promise.resolve("");
+  }
+  executeJavaScriptInIsolatedWorld<T>(_w: number, _code: string | { code: string }[]): Promise<T> {
+    return Promise.reject(new Error("isolated worlds unavailable in sidecar"));
+  }
+  setWindowOpenHandler(
+    _h: (details: { url: string }) => { action: string } | { action: string },
+  ): void {}
+  capturePage(_r?: unknown, _opts?: { stayHidden?: boolean }): Promise<NativeImage> {
     return Promise.resolve(new NativeImage());
   }
   focus(): void {}
@@ -298,6 +347,9 @@ export class BrowserWindow extends EventEmitter {
   setBackgroundColor(_c: string) {}
   setOpacity(_o: number) {}
   setAlwaysOnTop(_a: boolean) {}
+  setVibrancy(_v: string | null) {}
+  setBackgroundMaterial(_m: string) {}
+  setTitleBarOverlay(_o: unknown) {}
   setContentSize(_w: number, _h: number) {}
   getContentSize() {
     return [1440, 900];
@@ -308,7 +360,26 @@ export class BrowserWindow extends EventEmitter {
 }
 
 // ---- ipcMain ----
-type IpcHandler = (event: unknown, ...args: unknown[]) => unknown;
+export interface BrowserWindowConstructorOptions {
+  width?: number;
+  height?: number;
+  frame?: boolean;
+  transparent?: boolean;
+  backgroundColor?: string;
+  accentColor?: string | boolean;
+  backgroundMaterial?: string;
+  thickFrame?: boolean;
+  roundedCorners?: boolean;
+  titleBarStyle?: string;
+  titleBarOverlay?: { color?: string; symbolColor?: string; height?: number } | boolean;
+  trafficLightPosition?: { x: number; y: number };
+  vibrancy?: string;
+  visualEffectState?: string;
+  show?: boolean;
+  [key: string]: unknown;
+}
+
+type IpcHandler = (event: IpcMainInvokeEvent, ...args: any[]) => unknown;
 const handlers = new Map<string, IpcHandler>();
 const ipcListeners = new Map<string, Set<IpcHandler>>();
 
@@ -337,6 +408,7 @@ export const ipcMain = {
     ipcListeners.get(channel)?.delete(listener);
   },
 };
+export type IpcMain = typeof ipcMain;
 
 /** Shared webContents used as the event sender for RPC-dispatched invokes.
  * Registered with registerTrustedSender() at boot so assertTrustedSender passes. */
@@ -491,6 +563,7 @@ class NativeThemeShim extends EventEmitter {
   inForcedColorsMode = false;
 }
 export const nativeTheme = new NativeThemeShim();
+export type NativeTheme = NativeThemeShim;
 
 // ---- powerMonitor ----
 class PowerMonitorShim extends EventEmitter {
@@ -529,7 +602,7 @@ export const safeStorage = {
   encryptString: (t: string) => enc(t),
   decryptString: (b: Buffer) => dec(b),
   encryptStringAsync: async (t: string) => enc(t),
-  decryptStringAsync: async (b: Buffer) => dec(b),
+  decryptStringAsync: async (b: Buffer) => ({ result: dec(b), shouldReEncrypt: false }),
 };
 
 // ---- net ----
@@ -543,7 +616,7 @@ export const net = {
 
 // ---- protocol / session / screen / clipboard / menu / notification ----
 export const protocol = {
-  handle(_scheme: string, _handler: unknown) {},
+  handle(_scheme: string, _handler: (request: Request) => Response | Promise<Response>) {},
   registerSchemesAsPrivileged(_schemes: unknown[]) {},
   interceptFileProtocol() {
     return true;
@@ -565,8 +638,31 @@ export class Session extends EventEmitter {
   clearCache() {
     return Promise.resolve();
   }
+  setPermissionRequestHandler(
+    _h: (
+      webContents: WebContents,
+      permission: string,
+      callback: (granted: boolean) => void,
+    ) => void,
+  ): void {}
+  setPermissionCheckHandler(_h: (webContents: WebContents, permission: string) => boolean): void {}
+  setSpellCheckerLanguages(_langs: string[]): void {}
+  get availableSpellCheckerLanguages(): string[] {
+    return [];
+  }
   webRequest = {
-    onBeforeSendHeaders(_f: unknown, _h?: unknown) {},
+    onBeforeSendHeaders(
+      _f:
+        | ((
+            details: { requestHeaders?: Record<string, string> },
+            callback: (r: { requestHeaders?: Record<string, string> }) => void,
+          ) => void)
+        | { urls: string[] },
+      _h?: (
+        details: { requestHeaders?: Record<string, string> },
+        callback: (r: { requestHeaders?: Record<string, string> }) => void,
+      ) => void,
+    ) {},
     onHeadersReceived(_f: unknown, _h?: unknown) {},
   };
 }
@@ -588,6 +684,9 @@ export const screen = {
   },
   getCursorScreenPoint() {
     return { x: 0, y: 0 };
+  },
+  getDisplayNearestPoint(_p: { x: number; y: number }) {
+    return this.getPrimaryDisplay();
   },
   on: () => screen,
 };
@@ -635,8 +734,8 @@ export const clipboard = {
   read: () => [] as ClipboardItem[],
 };
 export class ClipboardItem {
-  items: Record<string, Buffer | string>;
-  constructor(items: Record<string, Buffer | string>) {
+  items: Record<string, Buffer | string | Blob>;
+  constructor(items: Record<string, Buffer | string | Blob>) {
     this.items = items;
   }
   getType(_type: string) {
@@ -650,13 +749,28 @@ export class ClipboardItem {
   }
 }
 
+export interface MenuItemConstructorOptions {
+  label?: string;
+  role?: string;
+  type?: string;
+  submenu?: MenuItemConstructorOptions[];
+  click?: (...args: unknown[]) => void;
+  enabled?: boolean;
+  accelerator?: string;
+  checked?: boolean;
+  visible?: boolean;
+  id?: string;
+  [key: string]: unknown;
+}
 export const Menu = {
   setApplicationMenu: (_m: unknown) => {},
   getApplicationMenu: () => null,
-  buildFromTemplate: (t: unknown[]) => ({ items: t, popup: () => {} }),
+  buildFromTemplate: (t: MenuItemConstructorOptions[]) => ({
+    items: t,
+    popup: () => {},
+  }),
   sendActionToFirstResponder: (_a: string) => {},
 };
-export type MenuItemConstructorOptions = Record<string, unknown>;
 
 export class Notification extends EventEmitter {
   static isSupported() {
@@ -703,26 +817,22 @@ export const utilityProcess = {
           ? ["inherit", "inherit", "inherit", "ipc"]
           : ["pipe", "pipe", "pipe", "ipc"],
       env: { ...process.env, ...options?.env },
-    }) as ChildProcess & { postMessage?: (m: unknown) => void };
+    }) as ChildProcess & { postMessage: (m: unknown) => void };
     child.postMessage = (m: unknown) => child.send?.(m as Serializable);
     return child;
   },
 };
 
-export class Debugger extends EventEmitter {
-  attach() {}
-  detach() {}
-  isAttached() {
-    return false;
-  }
-  sendCommand(_c: string, _p?: unknown) {
-    return Promise.resolve({});
-  }
+export interface Rectangle {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export type IpcMainInvokeEvent = {
   sender: WebContents;
-  senderFrame: unknown;
+  senderFrame: { url: string } | null;
 };
 
 export default {

@@ -21,13 +21,12 @@ const copies = [
     "modus-pty-host",
     "modus-rea-process-supervisor",
     "modus-plugin-execution-supervisor",
-    "modus-plugin-execution-worker",
+    "modus-plugin-worker",
   ].map((name) => ({
     from: join(TARGET_RELEASE, exe(name)),
     to: exe(name),
     // plugin supervisor/worker only build on Linux
-    required:
-      name !== "modus-plugin-execution-supervisor" && name !== "modus-plugin-execution-worker",
+    required: name !== "modus-plugin-execution-supervisor" && name !== "modus-plugin-worker",
   })),
 ];
 

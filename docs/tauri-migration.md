@@ -41,7 +41,7 @@ Tauri 3 shell (Rust)          Node sidecar (TS, Electron-free)
 ## Remaining (order)
 4. Replace Electron-only features: `protocol.handle` (doom scheme; renderer already falls back to /doom.html under http — verified), app menu (`application-menu` — Tauri menu in lib.rs if wanted), `nativeTheme`/`powerMonitor` (stubs OK).
 5. Port-to-Rust candidates (later, flag by flag): PTY (crates/pty-host exists), SQLite, ONNX tool filter, codegraph.
-6. (Optional) drop the `electron` types devDep: port `Electron.*` type usages in src/main to shim-local types.
+6. ~~drop the `electron` types devDep~~ DONE.
 7. Chromium binary for packaged users: `findBinary` needs a system Chrome; consider bundling Chromium or documenting MODUS_CHROMIUM_PATH.
 
 ## Gotchas discovered

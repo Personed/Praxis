@@ -8,6 +8,9 @@ import { EventEmitter } from "node:events";
 import { broadcastEvent } from "./bus";
 import type { CdpConnection } from "./cdp-client";
 import { chromiumManager } from "./chromium";
+// eslint-disable-next-line import/no-cycle -- shim imports this module too;
+// NativeImage is only touched inside async methods, after both modules init.
+import { NativeImage } from "./electron-shim";
 
 type CdpParams = Record<string, unknown>;
 
@@ -41,7 +44,20 @@ export class RemoteSession extends EventEmitter {
   setDownloadPath(_p: string): void {}
   /** webRequest shim: the locale module installs an Accept-Language hook. */
   webRequest = {
-    onBeforeSendHeaders: (fn: (details: unknown, cb: (r: unknown) => void) => void) => {
+    onBeforeSendHeaders: (
+      filterOrFn:
+        | { urls: string[] }
+        | ((
+            details: { requestHeaders?: Record<string, string> },
+            cb: (r: { requestHeaders?: Record<string, string> }) => void,
+          ) => void),
+      listener?: (
+        details: { requestHeaders?: Record<string, string> },
+        cb: (r: { requestHeaders?: Record<string, string> }) => void,
+      ) => void,
+    ) => {
+      const fn = typeof filterOrFn === "function" ? filterOrFn : listener;
+      if (!fn) return;
       // The hook shape used by applySessionLocale only rewrites
       // Accept-Language; intercept and capture the desired header value.
       const fakeRequestHeaders = { "User-Agent": "", "Accept-Language": "" };
@@ -104,6 +120,10 @@ export class RemoteWebContents extends EventEmitter {
   private navEntries: { url: string; title: string }[] = [];
   private navIndex = -1;
   private isolatedWorlds = new Map<number, number>();
+
+  get mainFrame(): { url: string } {
+    return { url: this.currentUrl };
+  }
 
   readonly navigationHistory = {
     getAllEntries: () => this.navEntries,
@@ -236,6 +256,31 @@ export class RemoteWebContents extends EventEmitter {
   reload(): void {
     void this.view.command("Page.reload", { ignoreCache: false }).catch(() => undefined);
   }
+  goBack(): void {
+    this.navigationHistory.goBack();
+  }
+  goForward(): void {
+    this.navigationHistory.goForward();
+  }
+  insertText(text: string): void {
+    void this.view.command("Input.insertText", { text }).catch(() => undefined);
+  }
+  copy(): void {
+    void this.evaluate('document.execCommand("copy")').catch(() => undefined);
+  }
+  paste(): void {
+    void this.evaluate('document.execCommand("paste")').catch(() => undefined);
+  }
+  selectAll(): void {
+    void this.evaluate('document.execCommand("selectAll")').catch(() => undefined);
+  }
+  unselect(): void {}
+  startFind(query: string, options?: unknown): number {
+    return this.findInPage(query, options as { forward?: boolean } | undefined);
+  }
+  stopFind(action: string): void {
+    this.stopFindInPage(action);
+  }
   stop(): void {
     void this.view.command("Page.stopLoading").catch(() => undefined);
   }
@@ -304,10 +349,10 @@ export class RemoteWebContents extends EventEmitter {
     return this.evaluate(code) as Promise<T>;
   }
 
-  async executeJavaScriptInIsolatedWorld(
+  async executeJavaScriptInIsolatedWorld<T>(
     worldId: number,
-    scripts: { code: string }[],
-  ): Promise<unknown> {
+    scripts: string | { code: string }[],
+  ): Promise<T> {
     const conn = this.conn();
     const sid = this.view.sessionId;
     if (!conn || !sid) throw new Error("CDP not attached");
@@ -330,8 +375,9 @@ export class RemoteWebContents extends EventEmitter {
       contextId = executionContextId;
       this.isolatedWorlds.set(worldId, contextId);
     }
+    const list = typeof scripts === "string" ? [{ code: scripts }] : scripts;
     let result: unknown;
-    for (const script of scripts) {
+    for (const script of list) {
       const res = await conn.send<{ result?: { value?: unknown } }>(
         "Runtime.evaluate",
         { expression: script.code, contextId, returnByValue: true },
@@ -339,7 +385,7 @@ export class RemoteWebContents extends EventEmitter {
       );
       result = res.result?.value;
     }
-    return result;
+    return result as T;
   }
 
   async insertCSS(css: string, _options?: { cssOrigin?: string }): Promise<string> {
@@ -363,7 +409,7 @@ export class RemoteWebContents extends EventEmitter {
   async capturePage(
     rect?: { x: number; y: number; width: number; height: number },
     _opts?: { stayHidden?: boolean },
-  ): Promise<{ getSize(): { width: number; height: number }; toPNG(): Buffer }> {
+  ): Promise<NativeImage> {
     const conn = this.conn();
     const sid = this.view.sessionId;
     if (!conn || !sid) throw new Error("CDP not attached");
@@ -384,11 +430,7 @@ export class RemoteWebContents extends EventEmitter {
       sid,
     );
     const buf = Buffer.from(data, "base64");
-    const dims = this.view.getBounds();
-    return {
-      getSize: () => ({ width: rect?.width ?? dims.width, height: rect?.height ?? dims.height }),
-      toPNG: () => buf,
-    };
+    return NativeImage.createFromBuffer(buf);
   }
 
   setZoomFactor(_z: number): void {}
@@ -413,7 +455,16 @@ export class RemoteWebContentsView extends EventEmitter {
   private tabId = "";
   private readonly detachListeners = new Set<() => void>();
 
-  constructor(options?: { webPreferences?: { partition?: string } }) {
+  constructor(options?: {
+    webPreferences?: {
+      partition?: string;
+      contextIsolation?: boolean;
+      nodeIntegration?: boolean;
+      sandbox?: boolean;
+      webSecurity?: boolean;
+      [key: string]: unknown;
+    };
+  }) {
     super();
     this.partition = options?.webPreferences?.partition ?? "persist:default";
     this.webContents = new RemoteWebContents(this);
