@@ -57,6 +57,8 @@ jobs:
 
       - name: Build sidecar, renderer and service binaries
         run: npm --workspace @modus/desktop run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
 
       - name: Stage bundled binaries (node, pty-host, supervisors, codegraph)
         run: node apps/desktop/scripts/stage-bundle-bin.mjs
