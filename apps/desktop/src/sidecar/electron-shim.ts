@@ -351,12 +351,87 @@ export function __ipcHas(channel: string): boolean {
 }
 
 // ---- dialog ----
+function execText(cmd: string, args: string[]): Promise<string | null> {
+  return new Promise((resolve) => {
+    execFile(cmd, args, (err, stdout) => {
+      resolve(err ? null : stdout.trim());
+    });
+  });
+}
+
+async function zenity(args: string[]): Promise<string | null> {
+  return execText("zenity", args);
+}
+
+async function osa(script: string): Promise<string | null> {
+  return execText("osascript", ["-e", script]);
+}
+
 export const dialog = {
-  async showOpenDialog(_opts: unknown) {
-    return { canceled: true, filePaths: [] };
+  async showOpenDialog(
+    opts: {
+      title?: string;
+      defaultPath?: string;
+      filters?: { name: string; extensions: string[] }[];
+      properties?: string[];
+    } = {},
+  ) {
+    const props = opts.properties ?? ["openFile"];
+    const directory = props.includes("openDirectory");
+    const multi = props.includes("multiSelections");
+    let out: string | null = null;
+    if (process.platform === "darwin") {
+      out = await osa(
+        directory
+          ? `POSIX path of (choose folder${opts.title ? ` with prompt ${JSON.stringify(opts.title)}` : ""})`
+          : `POSIX path of (choose file${opts.title ? ` with prompt ${JSON.stringify(opts.title)}` : ""})`,
+      );
+    } else if (process.platform === "win32") {
+      // no native picker wired; fall through to canceled
+    } else {
+      const args = ["--file-selection", `--title=${opts.title ?? "Open"}`];
+      if (directory) args.push("--directory");
+      if (multi) args.push("--multiple", "--separator=\n");
+      if (opts.defaultPath) args.push(`--filename=${opts.defaultPath}`);
+      for (const f of opts.filters ?? []) {
+        args.push(`--file-filter=${f.name} | ${f.extensions.map((e) => `*.${e}`).join(" ")}`);
+      }
+      out = await zenity(args);
+    }
+    if (!out) return { canceled: true, filePaths: [] };
+    return { canceled: false, filePaths: out.split("\n").filter(Boolean) };
   },
-  async showSaveDialog(_opts: unknown) {
-    return { canceled: true, filePath: "" };
+  async showSaveDialog(
+    _win: unknown,
+    opts: {
+      title?: string;
+      defaultPath?: string;
+      filters?: { name: string; extensions: string[] }[];
+    } = {},
+  ) {
+    let out: string | null = null;
+    if (process.platform === "darwin") {
+      const name = opts.defaultPath ? (opts.defaultPath.split("/").pop() ?? "file") : "file";
+      out = await osa(
+        `POSIX path of (choose file name${opts.title ? ` with prompt ${JSON.stringify(opts.title)}` : ""} default name ${JSON.stringify(name)})`,
+      );
+    } else if (process.platform === "win32") {
+      // canceled
+    } else {
+      const args = [
+        "--file-selection",
+        "--save",
+        "--confirm-overwrite",
+        `--title=${opts.title ?? "Save"}`,
+      ];
+      if (opts.defaultPath) args.push(`--filename=${opts.defaultPath}`);
+      for (const f of opts.filters ?? []) {
+        args.push(`--file-filter=${f.name} | ${f.extensions.map((e) => `*.${e}`).join(" ")}`);
+      }
+      out = await zenity(args);
+    }
+    if (!out) return { canceled: true, filePath: "" };
+    return { canceled: false, filePath: out };
   },
   async showMessageBox(_opts: unknown) {
     return { response: 0 };
@@ -578,13 +653,34 @@ export type MenuItemConstructorOptions = Record<string, unknown>;
 
 export class Notification extends EventEmitter {
   static isSupported() {
-    return false;
+    return true;
   }
-  constructor(_o?: unknown) {
+  constructor(private readonly options?: { title?: string; body?: string; silent?: boolean }) {
     super();
   }
-  show() {}
-  close() {}
+  show(): void {
+    const title = this.options?.title ?? "Modus";
+    const body = this.options?.body ?? "";
+    try {
+      if (process.platform === "darwin") {
+        execFile("osascript", [
+          "-e",
+          `display notification ${JSON.stringify(body)} with title ${JSON.stringify(title)}`,
+        ]);
+      } else if (process.platform === "win32") {
+        const ps = `Add-Type -AssemblyName System.Windows.Forms; $n=New-Object System.Windows.Forms.NotifyIcon; $n.Icon=[System.Drawing.SystemIcons]::Information; $n.Visible=$true; $n.ShowBalloonTip(4000,${JSON.stringify(title)},${JSON.stringify(body)},'Info'); Start-Sleep 4; $n.Dispose()`;
+        execFile("powershell", ["-NoProfile", "-Command", ps]);
+      } else {
+        execFile("notify-send", [title, body]);
+      }
+    } catch {
+      // Notifications are best-effort.
+    }
+    queueMicrotask(() => this.emit("show"));
+  }
+  close(): void {
+    this.emit("close");
+  }
 }
 
 // ---- utilityProcess ----

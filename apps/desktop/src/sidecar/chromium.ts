@@ -125,7 +125,7 @@ export class ChromiumManager {
           const wsUrl = match[1] ?? "";
           CdpConnection.connect(wsUrl).then(
             (conn) => {
-              conn.onClose(() => onExit());
+              conn.onClose(() => onExit(null));
               conn.onEvent((event) => this.emitBrowserEvent(event));
               void conn
                 .send("Target.setDiscoverTargets", { discover: true })
