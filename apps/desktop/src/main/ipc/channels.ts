@@ -96,6 +96,8 @@ export const IPC_CHANNELS = {
   browserListRecents: "browser:list-recents",
   browserDeleteRecent: "browser:delete-recent",
   browserEvent: "browser:event",
+  browserInput: "browser:input",
+  browserFrame: "browser:frame",
   diffReview: "diff:review",
   diffRead: "diff:read",
   diffFilePatch: "diff:file-patch",

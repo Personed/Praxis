@@ -34,6 +34,7 @@ import { cn } from "../../lib/cn";
 import { formatUiDate } from "../../lib/uiIntl";
 import { computeBrowserViewBounds, sameBrowserBounds } from "./browserBounds";
 import { DesignModeToggle } from "./DesignModeToggle";
+import { RemoteBrowserSurface } from "./RemoteBrowserSurface";
 
 type BrowserPanelProps = {
   active: boolean;
@@ -611,7 +612,15 @@ function BrowserViewport({
   return (
     <div className="relative min-h-0 flex-1 bg-canvas">
       {/* Native WebContentsView is rectangular; keep it inside the rounded shell. */}
-      <div className="absolute inset-x-1 top-0 bottom-1" ref={hostRef} />
+      <div className="absolute inset-x-1 top-0 bottom-1" ref={hostRef}>
+        {typeof window !== "undefined" &&
+        (window as { __MODUS_RPC__?: unknown }).__MODUS_RPC__ &&
+        tabId &&
+        active &&
+        !suppressed ? (
+          <RemoteBrowserSurface tabId={tabId} />
+        ) : null}
+      </div>
       {!tabId ? (
         <EmptyState
           description="Enter a URL to open a page"

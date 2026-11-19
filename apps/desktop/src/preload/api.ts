@@ -3,6 +3,7 @@ import type { AutomationServiceEvent } from "../shared/automations";
 import type {
   AgentEvent,
   BrowserEvent,
+  BrowserFrameEvent,
   FilesChangeEvent,
   GitChangeEvent,
   HarnessInsightsQuery,
@@ -248,6 +249,13 @@ export function createModusApi(t: ModusTransport): ModusApi {
         const listener = (_event: unknown, payload: unknown) => callback(payload as BrowserEvent);
         t.on("browser:event", listener);
         return () => t.removeListener("browser:event", listener);
+      },
+      sendInput: (input) => t.invoke("browser:input", input),
+      onFrame: (callback) => {
+        const listener = (_event: unknown, payload: unknown) =>
+          callback(payload as BrowserFrameEvent);
+        t.on("browser:frame", listener);
+        return () => t.removeListener("browser:frame", listener);
       },
     },
     diff: {

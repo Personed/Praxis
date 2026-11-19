@@ -140,6 +140,42 @@ export type BrowserBounds = {
   height: number;
 };
 
+/** Input forwarded to a remote (headless-CDP) tab; no-op for native views. */
+export type BrowserInputEvent =
+  | {
+      kind: "mouse";
+      type: "mousePressed" | "mouseReleased" | "mouseMoved" | "mouseWheel";
+      x: number;
+      y: number;
+      button?: "none" | "left" | "middle" | "right";
+      clickCount?: number;
+      modifiers?: number;
+      deltaX?: number;
+      deltaY?: number;
+    }
+  | {
+      kind: "key";
+      type: "keyDown" | "keyUp" | "rawKeyDown" | "char";
+      key: string;
+      code?: string;
+      text?: string;
+      modifiers?: number;
+    };
+
+/** Screencast frame pushed by the remote (Tauri-mode) browser. */
+export type BrowserFrameEvent = {
+  tabId: string;
+  /** Base64-encoded JPEG. */
+  data: string;
+  metadata?: {
+    deviceWidth?: number;
+    deviceHeight?: number;
+    scrollOffsetX?: number;
+    scrollOffsetY?: number;
+    timestamp?: number;
+  };
+};
+
 export type BrowserConsoleMessage = {
   id: string;
   tabId: string;

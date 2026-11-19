@@ -166,6 +166,22 @@ export function hideBrowserTab(tabId: string): void {
   }
 }
 
+/**
+ * Input forwarded from the renderer (Tauri mode: DOM events on the screencast
+ * canvas). Remote WebContentsViews implement dispatchInput → CDP Input domain;
+ * native Electron views render their own surface and ignore this.
+ */
+export async function dispatchBrowserInput(
+  tabId: string,
+  event: Record<string, unknown>,
+): Promise<void> {
+  const tab = getTab(tabId);
+  const remote = tab?.view as unknown as
+    | { dispatchInput?: (event: Record<string, unknown>) => Promise<void> }
+    | undefined;
+  await remote?.dispatchInput?.(event);
+}
+
 export function toggleBrowserDevtools(tabId: string): BrowserTabInfo {
   const tab = resolveTab({ tabId });
   if (tab.view.webContents.isDevToolsOpened()) {

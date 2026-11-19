@@ -22,6 +22,8 @@ import type {
   ApprovalModeState,
   BrowserBounds,
   BrowserEvent,
+  BrowserFrameEvent,
+  BrowserInputEvent,
   BrowserRecentInfo,
   BrowserTabInfo,
   CheckpointInfo,
@@ -398,6 +400,16 @@ export type ModusApi = {
     listRecents(input: { workspaceId: string }): Promise<BrowserRecentInfo[]>;
     deleteRecent(input: { id: string }): Promise<void>;
     onEvent(callback: (event: BrowserEvent) => void): () => void;
+    /**
+     * Forward a DOM event to a remote (headless-CDP) tab. No-op under the
+     * native Electron browser view.
+     */
+    sendInput(input: { tabId: string; event: BrowserInputEvent }): Promise<void>;
+    /**
+     * Screencast frames (base64 JPEG) for remote tabs; only emitted in
+     * Tauri mode.
+     */
+    onFrame(callback: (frame: BrowserFrameEvent) => void): () => void;
   };
   diff: {
     review(input: { cwd: string; target: DiffTarget }): Promise<DiffReview>;

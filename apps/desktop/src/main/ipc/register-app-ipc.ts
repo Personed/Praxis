@@ -111,6 +111,7 @@ import { deleteBrowserRecent, listBrowserRecents } from "../browser/browser-rece
 import {
   closeBrowserTab,
   createBrowserTab,
+  dispatchBrowserInput,
   findInBrowserPage,
   hideBrowserTab,
   listBrowserTabs,
@@ -261,6 +262,7 @@ import {
   browserDesignModeSchema,
   browserFindSchema,
   browserFindStopSchema,
+  browserInputSchema,
   browserNavigateSchema,
   browserRecentSchema,
   browserTabSchema,
@@ -972,6 +974,12 @@ export function registerAppIpc({
     assertTrustedSender(event);
     const parsed = parseIpcInput(browserTabSchema, input, IPC_CHANNELS.browserHide);
     hideBrowserTab(parsed.tabId);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.browserInput, async (event, input) => {
+    assertTrustedSender(event);
+    const parsed = parseIpcInput(browserInputSchema, input, IPC_CHANNELS.browserInput);
+    await dispatchBrowserInput(parsed.tabId, parsed.event);
   });
 
   ipcMain.handle(IPC_CHANNELS.browserToggleDevtools, (event, input) => {

@@ -323,6 +323,10 @@ export function createTab(
   // Opaque white backing so the page never reveals the window's dark canvas
   // (#131314) along edges before first paint or during resize.
   view.setBackgroundColor("#ffffff");
+  // Remote (Tauri) views tag screencast frames with the tab id.
+  (view as WebContentsViewType & { setTabIdForFrames?: (id: string) => void }).setTabIdForFrames?.(
+    id,
+  );
   applySessionSecurity(view.webContents.session);
 
   const tab: BrowserTab = {

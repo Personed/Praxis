@@ -13,6 +13,31 @@ export const browserBoundsSchema = z.object({
   }),
 });
 
+export const browserInputSchema = z.object({
+  tabId: nonEmptyString,
+  event: z.discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("mouse"),
+      type: z.enum(["mousePressed", "mouseReleased", "mouseMoved", "mouseWheel"]),
+      x: z.number().finite(),
+      y: z.number().finite(),
+      button: z.enum(["none", "left", "middle", "right"]).optional(),
+      clickCount: z.number().int().min(0).max(3).optional(),
+      modifiers: z.number().int().min(0).optional(),
+      deltaX: z.number().finite().optional(),
+      deltaY: z.number().finite().optional(),
+    }),
+    z.object({
+      kind: z.literal("key"),
+      type: z.enum(["keyDown", "keyUp", "rawKeyDown", "char"]),
+      key: z.string(),
+      code: z.string().optional(),
+      text: z.string().optional(),
+      modifiers: z.number().int().min(0).optional(),
+    }),
+  ]),
+});
+
 export const browserFindSchema = z.object({
   tabId: nonEmptyString,
   query: nonEmptyString,

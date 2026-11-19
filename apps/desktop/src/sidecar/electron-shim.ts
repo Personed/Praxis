@@ -11,12 +11,10 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir, hostname, tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
 
-// ---- broadcast hook: set by rpc.ts so webContents.send reaches the renderer ----
-type SendFn = (channel: string, payload: unknown) => void;
-let broadcaster: SendFn = () => {};
-export function __setEventBroadcaster(fn: SendFn): void {
-  broadcaster = fn;
-}
+// ---- broadcast hook: rpc.ts registers the socket broadcast via bus.ts ----
+import { broadcastEvent } from "./bus";
+
+export { setEventBroadcaster as __setEventBroadcaster } from "./bus";
 
 // ---- app ----
 const dataRoot = join(process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "modus");
@@ -148,10 +146,10 @@ export class WebContents extends EventEmitter {
   };
   debugger = { attach() {}, detach() {}, sendCommand: async () => ({}) };
   send(channel: string, ...args: unknown[]): void {
-    broadcaster(channel, args.length <= 1 ? args[0] : args);
+    broadcastEvent(channel, args.length <= 1 ? args[0] : args);
   }
   postMessage(_channel: string, _payload: unknown, _t?: unknown[]): void {
-    broadcaster(_channel, _payload);
+    broadcastEvent(_channel, _payload);
   }
   loadURL(_url: string): Promise<void> {
     return Promise.resolve();
@@ -207,28 +205,19 @@ export class WebContents extends EventEmitter {
   }
 }
 
-export class WebContentsView extends EventEmitter {
-  webContents = new WebContents();
-  constructor(_o?: unknown) {
-    super();
-  }
-  setBounds(_b: unknown): void {}
-  getBounds() {
-    return { x: 0, y: 0, width: 0, height: 0 };
-  }
-  setVisible(_v: boolean): void {}
-  setBackgroundColor(_c: string): void {}
-  setBorderRadius(_r: number): void {}
-}
+// Browser tabs run on real Chromium targets via CDP (Tauri mode).
+import { RemoteWebContentsView } from "./remote-view";
+
+export { RemoteWebContentsView as WebContentsView };
 
 // ---- BrowserWindow ----
 export class BrowserWindow extends EventEmitter {
   static instances = new Set<BrowserWindow>();
   webContents = mainWebContents;
   contentView = {
-    addChildView: (_v: WebContentsView) => {},
-    removeChildView: (_v: WebContentsView) => {},
-    children: [] as WebContentsView[],
+    addChildView: (_v: RemoteWebContentsView) => {},
+    removeChildView: (_v: RemoteWebContentsView) => {},
+    children: [] as RemoteWebContentsView[],
     setBounds(_b: unknown) {},
     getBounds() {
       return { x: 0, y: 0, width: 0, height: 0 };
@@ -303,6 +292,9 @@ export class BrowserWindow extends EventEmitter {
   setOpacity(_o: number) {}
   setAlwaysOnTop(_a: boolean) {}
   setContentSize(_w: number, _h: number) {}
+  getContentSize() {
+    return [1440, 900];
+  }
   webContentsId() {
     return this.webContents.id;
   }
@@ -634,7 +626,7 @@ export default {
   app,
   BrowserWindow,
   WebContents,
-  WebContentsView,
+  WebContentsView: RemoteWebContentsView,
   ipcMain,
   dialog,
   shell,
