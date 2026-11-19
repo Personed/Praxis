@@ -134,20 +134,16 @@ describe("release URLs", () => {
     }
   });
 
-  it("accepts the renamed owner and rejects the old one (it can be registered by anyone)", () => {
+  it("accepts the release repo and rejects lookalike owners", () => {
     const path = "/releases/download/v1.2.3/Modus-1.2.3-mac-arm64.zip";
-    expect(isAllowedReleaseAssetUrl(`https://github.com/Stoltembergg/modus${path}`)).toBe(true);
-    expect(isAllowedReleaseAssetUrl(`https://github.com/stoltembergg-png/modus${path}`)).toBe(
-      false,
-    );
-    expect(isAllowedReleaseAssetUrl(`https://github.com/Stoltembergg-png/modus${path}`)).toBe(
-      false,
-    );
+    expect(isAllowedReleaseAssetUrl(`https://github.com/Personed/Praxis${path}`)).toBe(true);
+    expect(isAllowedReleaseAssetUrl(`https://github.com/personed-old/Praxis${path}`)).toBe(false);
+    expect(isAllowedReleaseAssetUrl(`https://github.com/Personed-old/Praxis${path}`)).toBe(false);
   });
 
   it("ignores case only in the owner and repository segments", () => {
     const path = "/releases/download/v1.2.3/Modus-1.2.3-mac-arm64.zip";
-    for (const repo of ["Stoltembergg/modus", "stoltembergg/modus", "STOLTEMBERGG/MODUS"]) {
+    for (const repo of ["Personed/Praxis", "personed/praxis", "PERSONED/PRAXIS"]) {
       expect(isAllowedReleaseAssetUrl(`https://github.com/${repo}${path}`), repo).toBe(true);
       expect(isAllowedReleaseAssetUrl(`https://github.com/${repo}${path}`, "1.2.3"), repo).toBe(
         true,
@@ -161,19 +157,19 @@ describe("release URLs", () => {
       `https://github.com/${REPO}/Releases/download/v1.2.3/Modus.zip`,
       `https://github.com/${REPO}/releases/Download/v1.2.3/Modus.zip`,
       // Old owner, in any casing.
-      "https://github.com/STOLTEMBERGG-PNG/modus/releases/download/v1.2.3/Modus.zip",
+      "https://github.com/PERSONED-OLD/Praxis/releases/download/v1.2.3/Modus.zip",
       // Case-insensitive, not prefix/suffix matching.
-      "https://github.com/Stoltembergg/modu/releases/download/v1.2.3/Modus.zip",
-      "https://github.com/xStoltembergg/modus/releases/download/v1.2.3/Modus.zip",
-      "https://github.com/Stoltembergg/modus/releases/download/v1.2.3/",
-      "https://github.com/Stoltembergg/modus//releases/download/v1.2.3/Modus.zip",
+      "https://github.com/Personed/Praxi/releases/download/v1.2.3/Modus.zip",
+      "https://github.com/xPersoned/Praxis/releases/download/v1.2.3/Modus.zip",
+      "https://github.com/Personed/Praxis/releases/download/v1.2.3/",
+      "https://github.com/Personed/Praxis//releases/download/v1.2.3/Modus.zip",
     ]) {
       expect(isAllowedReleaseAssetUrl(bad), bad).toBe(false);
     }
     // The version check stays exact too.
     expect(
       isAllowedReleaseAssetUrl(
-        `https://github.com/stoltembergg/modus/releases/download/v1.2.3/Modus.zip`,
+        `https://github.com/personed/praxis/releases/download/v1.2.3/Modus.zip`,
         "1.2.4",
       ),
     ).toBe(false);

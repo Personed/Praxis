@@ -1,27 +1,19 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import builderConfig from "../../electron-builder.config";
 import { RELEASE_REPO } from "./release-repo";
 
 describe("RELEASE_REPO", () => {
-  it("is the renamed GitHub owner with its canonical casing", () => {
-    // The account was renamed from stoltembergg-png, which anyone can now register:
-    // never point the updater back at it.
-    expect(RELEASE_REPO).toEqual({ owner: "Stoltembergg", repo: "modus" });
+  it("is the repository this fork ships updates from", () => {
+    expect(RELEASE_REPO).toEqual({ owner: "Personed", repo: "Praxis" });
   });
 
-  it("is the repository electron-builder publishes to (app-update.yml)", () => {
-    expect(builderConfig.publish).toMatchObject({
-      provider: "github",
-      owner: RELEASE_REPO.owner,
-      repo: RELEASE_REPO.repo,
-    });
-  });
-
-  it("edits the Windows executable resources to embed the Modus icon", () => {
-    expect(builderConfig.win).toMatchObject({
-      icon: "resources/icon.ico",
-      signExecutable: false,
-    });
-    expect(builderConfig.win).not.toHaveProperty("signAndEditExecutable", false);
+  it("matches the Tauri updater endpoint", () => {
+    const tauriConfig = JSON.parse(
+      readFileSync(join(__dirname, "../../src-tauri/tauri.conf.json"), "utf8"),
+    ) as { plugins: { updater: { endpoints: string[] } } };
+    for (const endpoint of tauriConfig.plugins.updater.endpoints) {
+      expect(endpoint).toContain(`github.com/${RELEASE_REPO.owner}/${RELEASE_REPO.repo}/`);
+    }
   });
 });
