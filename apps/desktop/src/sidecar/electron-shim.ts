@@ -20,6 +20,13 @@ export { setEventBroadcaster as __setEventBroadcaster } from "./bus";
 const dataRoot = join(process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "modus");
 mkdirSync(dataRoot, { recursive: true });
 
+// Packaged runs get MODUS_RESOURCES_PATH from the shell; main code resolves
+// bundled binaries via process.resourcesPath like it did under Electron.
+if (process.env.MODUS_RESOURCES_PATH) {
+  (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath =
+    process.env.MODUS_RESOURCES_PATH;
+}
+
 class AppShim extends EventEmitter {
   private readyResolve!: () => void;
   private readonly ready = new Promise<void>((r) => (this.readyResolve = r));
@@ -78,7 +85,7 @@ class AppShim extends EventEmitter {
   getAppPath(): string {
     return process.cwd();
   }
-  isPackaged = false;
+  isPackaged = Boolean(process.env.MODUS_RESOURCES_PATH);
   getLocale(): string {
     return Intl.DateTimeFormat().resolvedOptions().locale;
   }

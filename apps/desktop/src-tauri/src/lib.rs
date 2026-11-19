@@ -162,17 +162,39 @@ fn random_token() -> String {
   out
 }
 
+/// Packaged layout staged by scripts/stage-bundle-bin.mjs: <resources>/bin holds
+/// node + the Rust service binaries, <resources>/sidecar/index.js and
+/// <resources>/renderer/ the app files. Returns None in dev.
+fn resource_root(app: &tauri::App) -> Option<std::path::PathBuf> {
+  use tauri::Manager;
+  app.path()
+    .resource_dir()
+    .ok()
+    .filter(|dir| dir.join("sidecar").join("index.js").exists())
+}
+
 /// Spawn `node out/sidecar/index.js` and read the `MODUS_RPC_READY <port>` line.
-fn spawn_sidecar() -> Result<(Child, u16, String), Box<dyn std::error::Error>> {
+fn spawn_sidecar(app: &tauri::App) -> Result<(Child, u16, String), Box<dyn std::error::Error>> {
   let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
   // src-tauri -> desktop -> apps -> repo root (for service binary lookups like pty-host).
   let repo_root = manifest.join("../../..").canonicalize()?;
-  let sidecar = manifest.join("../out/sidecar/index.js").canonicalize()?;
   let token = random_token();
 
-  let mut child = Command::new("node")
-    .arg(&sidecar)
-    .current_dir(&repo_root)
+  let mut command = if let Some(res) = resource_root(app) {
+    let node = res.join("bin").join(if cfg!(windows) { "node.exe" } else { "node" });
+    let mut cmd = Command::new(node);
+    cmd.arg(res.join("sidecar").join("index.js"))
+      .current_dir(&res)
+      .env("MODUS_RESOURCES_PATH", &res);
+    cmd
+  } else {
+    let sidecar = manifest.join("../out/sidecar/index.js").canonicalize()?;
+    let mut cmd = Command::new("node");
+    cmd.arg(&sidecar).current_dir(&repo_root);
+    cmd
+  };
+
+  let mut child = command
     .env("MODUS_RPC_TOKEN", &token)
     .env("MODUS_RPC_PORT", "0")
     .stdout(Stdio::piped())
@@ -215,10 +237,13 @@ fn spawn_sidecar() -> Result<(Child, u16, String), Box<dyn std::error::Error>> {
 
 /// Serve the renderer over real HTTP on 127.0.0.1 — the opaque `tauri://`
 /// scheme breaks WebSocket and localStorage in WebKitGTK.
-fn serve_frontend() -> Result<u16, Box<dyn std::error::Error>> {
-  let dist = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-    .join("../out/renderer-web")
-    .canonicalize()?;
+fn serve_frontend(app: &tauri::App) -> Result<u16, Box<dyn std::error::Error>> {
+  let dist = match resource_root(app) {
+    Some(res) => res.join("renderer"),
+    None => std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+      .join("../out/renderer-web")
+      .canonicalize()?,
+  };
   let server = tiny_http::Server::http("127.0.0.1:0")
     .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
   let port = server
@@ -296,7 +321,7 @@ pub fn run() {
       app.handle().plugin(tauri_plugin_process::init())?;
       app.manage(UpdateStateStore(Mutex::new(serde_json::json!({ "status": "idle" }))));
 
-      let (child, port, token) = spawn_sidecar()
+      let (child, port, token) = spawn_sidecar(app)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
       app.manage(SidecarState {
         child: Mutex::new(Some(child)),
@@ -310,7 +335,7 @@ pub fn run() {
         serde_json::to_string(std::env::consts::OS).unwrap_or_else(|_| "\"linux\"".into()),
         serde_json::to_string("").unwrap_or_else(|_| "\"\"".into()),
       );
-      let frontend_port = serve_frontend()
+      let frontend_port = serve_frontend(app)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
       let webview_url = tauri::WebviewUrl::External(
         format!("http://127.0.0.1:{}/", frontend_port).parse().unwrap(),

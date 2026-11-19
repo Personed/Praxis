@@ -4,7 +4,7 @@
  * the shim) is a CDP target in a per-workspace browser context.
  */
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync, readlinkSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { CdpConnection } from "./cdp-client";
@@ -41,6 +41,54 @@ export class ChromiumManager {
     return null;
   }
 
+  /** Connect to an already-running Chromium whose DevToolsActivePort file is fresh. */
+  private adoptRunningBrowser(profileDir: string): Promise<CdpConnection> | null {
+    try {
+      const [port, wsPath] = readFileSync(join(profileDir, "DevToolsActivePort"), "utf8")
+        .split("\n")
+        .map((l) => l.trim());
+      if (!port || !wsPath) return null;
+      return CdpConnection.connect(`ws://127.0.0.1:${port}${wsPath}`).then(
+        (conn) => {
+          conn.onClose(() => {
+            this.conn = null;
+            this.contexts.clear();
+          });
+          conn.onEvent((event) => this.emitBrowserEvent(event));
+          void conn.send("Target.setDiscoverTargets", { discover: true }).catch(() => undefined);
+          return conn;
+        },
+        () => {
+          throw new Error("unreachable");
+        },
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  /** Remove Singleton* lock files left behind by a crashed/killed Chromium. */
+  private clearStaleProfileLock(profileDir: string): void {
+    try {
+      const lock = join(profileDir, "SingletonLock");
+      const target = readlinkSync(lock); // "<hostname>-<pid>"
+      const pid = Number(target.split("-").pop());
+      if (Number.isFinite(pid) && pid > 0) {
+        try {
+          process.kill(pid, 0);
+          return; // a live Chromium owns this profile
+        } catch {
+          // dead owner: drop the locks
+        }
+      }
+      for (const name of ["SingletonLock", "SingletonSocket", "SingletonCookie"]) {
+        rmSync(join(profileDir, name), { force: true });
+      }
+    } catch {
+      // no lock present
+    }
+  }
+
   /** Connect (spawn if needed) to the browser-level CDP endpoint. */
   async ensureBrowser(): Promise<CdpConnection> {
     if (this.conn && !this.conn.isClosed) {
@@ -59,6 +107,21 @@ export class ChromiumManager {
   }
 
   private start(): Promise<CdpConnection> {
+    const profileDir = join(dataRoot, "remote-browser");
+    mkdirSync(profileDir, { recursive: true });
+
+    // A Chromium that outlived its sidecar still owns the profile: adopt it via
+    // the DevToolsActivePort file instead of fighting the singleton lock.
+    const adopted = this.adoptRunningBrowser(profileDir)?.catch(() => null);
+    if (adopted) {
+      return adopted.then((conn) => conn ?? this.spawnBrowser(profileDir));
+    }
+
+    this.clearStaleProfileLock(profileDir);
+    return this.spawnBrowser(profileDir);
+  }
+
+  private spawnBrowser(profileDir: string): Promise<CdpConnection> {
     const binary = this.findBinary();
     if (!binary) {
       return Promise.reject(
@@ -67,9 +130,6 @@ export class ChromiumManager {
         ),
       );
     }
-    const profileDir = join(dataRoot, "remote-browser");
-    mkdirSync(profileDir, { recursive: true });
-
     return new Promise((resolve, reject) => {
       const child = spawn(
         binary,

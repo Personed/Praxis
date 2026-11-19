@@ -24,6 +24,11 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "resources": {
+      "../out/sidecar": "sidecar",
+      "../out/renderer-web": "renderer",
+      "../out/bundle-bin": "bin"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

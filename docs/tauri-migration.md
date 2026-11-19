@@ -35,11 +35,14 @@ Tauri 3 shell (Rust)          Node sidecar (TS, Electron-free)
 - **Electron removed from runtime + build** (`e001a899`): `src/main/index.ts`, `src/preload/index.ts`, `electron.vite.config.ts`, `electron-builder.config.ts`, package-mac/package-win/release workflows, and the whole electron-updater engine (`electron-updater-source`, `mac-zip-installer`, `mac-install-*`) deleted. `update-service.ts` reduced to the UI snapshot save/restore + an idle `UpdateIpcService` facade (channels route to the Tauri shell). `electron` stays in devDependencies **for types only** — ~57 main files `import ... from "electron"`; the sidecar esbuild aliases them to `electron-shim.ts` at runtime. Full removal needs porting the main process's `Electron.*` type usages to shim types.
 - `RELEASE_REPO` now `{owner:"Personed", repo:"Praxis"}` (the fork); `release-repo.test.ts` validates it against `tauri.conf.json`'s updater endpoint.
 
+- **Packaged layout verified**: `tauri.conf.json` maps `out/sidecar`→`sidecar`, `out/renderer-web`→`renderer`, `out/bundle-bin`→`bin`. `lib.rs` resolves resource dir (dev fallback), sets `MODUS_RESOURCES_PATH`; shim sets `isPackaged`/`process.resourcesPath` from it. `scripts/stage-bundle-bin.mjs` stages node binary + modus-* cargo binaries + codegraph + onnxruntime-node (platform binaries only, under `sidecar/node_modules`). Sidecar now bundles all JS deps (esbuild externals: onnxruntime-node, vite, vitest) with a `createRequire` banner for CJS deps. Verified: extracted .deb boots, RPC ready, ONNX rerank03 loads. Remote-browser profile locks: sidecar adopts a live Chromium via `DevToolsActivePort`, clears dead-PID Singleton locks.
+- **Release workflow** `.github/workflows/release.yml`: tag `v*.*.*` → per-OS matrix (macos-14/13, windows, ubuntu-22.04) → `npm run build` + stage-bundle-bin + `tauri build` → upload bundles → release job generates `latest.json` (`scripts/release/latest-json.mjs`) and `gh release create`s with all bundles. Requires repo secrets `TAURI_SIGNING_PRIVATE_KEY` + `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (the minisign key; dev bot cannot set repo secrets — user must add them). Unsigned OS-level builds (no notarization/codesign certs).
+
 ## Remaining (order)
 4. Replace Electron-only features: `protocol.handle` (doom scheme; renderer already falls back to /doom.html under http — verified), app menu (`application-menu` — Tauri menu in lib.rs if wanted), `nativeTheme`/`powerMonitor` (stubs OK).
-5. CI for Tauri release (new workflow replacing deleted release.yml): `tauri build` per-OS matrix + `TAURI_SIGNING_PRIVATE_KEY[_PASSWORD]` secrets + publish `latest.json` to the release.
-6. Port-to-Rust candidates (later, flag by flag): PTY (crates/pty-host exists), SQLite, ONNX tool filter, codegraph.
-7. (Optional) drop the `electron` types devDep: port `Electron.*` type usages in src/main to shim-local types.
+5. Port-to-Rust candidates (later, flag by flag): PTY (crates/pty-host exists), SQLite, ONNX tool filter, codegraph.
+6. (Optional) drop the `electron` types devDep: port `Electron.*` type usages in src/main to shim-local types.
+7. Chromium binary for packaged users: `findBinary` needs a system Chrome; consider bundling Chromium or documenting MODUS_CHROMIUM_PATH.
 
 ## Gotchas discovered
 
