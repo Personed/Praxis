@@ -62,7 +62,7 @@ jobs:
         run: node apps/desktop/scripts/stage-bundle-bin.mjs
 
       - name: Tauri build
-        run: npm --workspace @modus/desktop exec -- tauri build -- --target ${{ matrix.rust_target }}
+        run: npm --workspace @modus/desktop exec -- tauri build
         env:
           MODUS_REA_RUST_TARGET: ${{ matrix.rust_target }}
 
