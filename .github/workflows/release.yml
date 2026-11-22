@@ -87,16 +87,13 @@ jobs:
             target/${{ matrix.rust_target }}/release/bundle/**/*.nsis.zip.sig
             target/release/bundle/**/*.dmg
             target/release/bundle/**/*.app.tar.gz
-            target/release/bundle/**/*.app.tar.gz.sig
             target/release/bundle/**/*.AppImage
-            target/release/bundle/**/*.AppImage.tar.gz
-            target/release/bundle/**/*.AppImage.tar.gz.sig
             target/release/bundle/**/*.deb
             target/release/bundle/**/*.rpm
             target/release/bundle/**/*.msi
             target/release/bundle/**/*.exe
             target/release/bundle/**/*.nsis.zip
-            target/release/bundle/**/*.nsis.zip.sig
+            target/release/bundle/**/*.sig
           if-no-files-found: warn
 
   release:
@@ -110,17 +107,19 @@ jobs:
         with:
           pattern: bundles-*
           path: dist
-          merge-multiple: true
 
       - name: Generate latest.json updater manifest
         run: node apps/desktop/scripts/release/latest-json.mjs dist "${{ github.ref_name }}"
+
+      - name: List staged assets
+        run: ls -lh dist/release-assets/
 
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release create "${{ github.ref_name }}" dist/* \
+          gh release create "${{ github.ref_name }}" dist/release-assets/* \
             --title "Modus ${{ github.ref_name }}" \
             --generate-notes \
             --repo "$GH_REPO"
